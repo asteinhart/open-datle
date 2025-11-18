@@ -23,7 +23,7 @@
 		id = findID();
 	});
 
-	let chart;
+	let chart: any;
 
 	function handleSubmit() {
 		const userDrawing = chart.getUserPoints();

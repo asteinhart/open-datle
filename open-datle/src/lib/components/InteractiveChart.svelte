@@ -13,7 +13,7 @@
 		reveal = false
 	} = $props();
 
-	let svg;
+	let svg: any;
 	const margin = { top: 20, right: 30, bottom: 50, left: 60 };
 
 	// Convert data x values to Date objects
@@ -37,13 +37,13 @@
 	$inspect(processedData, xDomain, yDomain);
 
 	// Handle mouse down - start drawing
-	function handleMouseDown(event) {
+	function handleMouseDown(event: MouseEvent) {
 		isDrawing = true;
 		addPoint(event);
 	}
 
 	// Handle mouse move - continue drawing
-	function handleMouseMove(event) {
+	function handleMouseMove(event: MouseEvent) {
 		if (!isDrawing) return;
 		addPoint(event);
 	}
@@ -55,7 +55,7 @@
 	}
 
 	// Add a point based on mouse position
-	function addPoint(event) {
+	function addPoint(event: MouseEvent) {
 		if (!svg) return;
 
 		const chartWidth = width - margin.left - margin.right;
@@ -224,6 +224,7 @@
 </script>
 
 <div class="chart-container">
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<svg
 		bind:this={svg}
 		role="application"
