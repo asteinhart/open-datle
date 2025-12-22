@@ -2,4 +2,5 @@
 *.csv
 *.json
 *.parquet
+*.db
 llm-medium.txt
