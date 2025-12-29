@@ -1,13 +1,11 @@
 import duckdb
-import json
-from datetime import datetime
 import os
 
 # Ensure the directory for the database exists
-os.makedirs("db", exist_ok=True)
+os.makedirs("database", exist_ok=True)
 
 # Create or connect to DuckDB database
-con = duckdb.connect("db/open_datle.db")
+con = duckdb.connect("database/open_datle.db")
 
 # Create tables
 con.execute(
