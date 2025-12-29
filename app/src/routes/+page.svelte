@@ -3,7 +3,6 @@
 	import Instructions from '$lib/components/Instructions.svelte';
 	import InteractiveChart from '$lib/components/InteractiveChart.svelte';
 	import InteractiveOrder from '$lib/components/InteractiveOrder.svelte';
-	import ResultChart from '$lib/components/ResultsChart.svelte';
 	import SubmitChart from '$lib/components/SubmitChart.svelte';
 	import SubmitOrder from '$lib/components/SubmitOrder.svelte';
 
@@ -61,9 +60,10 @@
 			<InteractiveChart
 				bind:this={chart}
 				title={data.title}
+				subtitle={data.subtitle}
 				data={data.data}
-				xAxisLabel={data.xAxisLabel}
-				yAxisLabel={data.yAxisLabel}
+				yMin={data.yMin}
+				yMax={data.yMax}
 				reveal={$revealAnswer}
 			/>
 		</div>

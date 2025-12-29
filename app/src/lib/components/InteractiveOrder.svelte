@@ -173,8 +173,8 @@
 <style>
 	.order-container {
 		max-width: 800px;
-		margin: 2rem auto;
-		padding: 1.5rem;
+		margin: 0 auto 1rem;
+		padding: 1rem;
 	}
 
 	h1 {

@@ -1,8 +1,10 @@
 interface DataSet {
 	dataset_id: number;
 	title: string;
-	xAxisLabel: string;
-	yAxisLabel: string;
+	subtitle: string | null;
+	city: string;
+	yMin: number | null;
+	yMax: number | null;
 	data: Array<{
 		x: number | string;
 		y: number;

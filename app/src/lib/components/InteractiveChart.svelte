@@ -7,12 +7,13 @@
 	// Props for the chart
 	let {
 		data = [],
-		xAxisLabel = 'X Axis',
-		yAxisLabel = 'Y Axis',
 		width = 600,
 		height = 400,
 		reveal = false,
-		title = ''
+		title = '',
+		subtitle = null,
+		yMin = null,
+		yMax = null
 	} = $props();
 
 	let svg: any;
@@ -55,7 +56,11 @@
 
 	// find data domains
 	const xDomain = $derived(d3.extent(processedData, (d) => d.x) as [Date, Date]);
-	const yDomain = $derived(d3.extent(processedData, (d) => d.y) as [number, number]);
+	const yDomain = $derived(
+		yMin !== null && yMax !== null
+			? [yMin, yMax]
+			: (d3.extent(processedData, (d) => d.y) as [number, number])
+	);
 
 	// Handle mouse down - start drawing
 	function handleMouseDown(event: MouseEvent) {
@@ -149,22 +154,12 @@
 		const chartHeight = height - margin.top - margin.bottom;
 
 		// Create SVG container
-		const svgElement = d3.select(svg).attr('width', containerWidth).attr('height', height);
-
-		const g = svgElement.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-		// Add title if provided
-		if (title) {
-			svgElement
-				.append('text')
-				.attr('x', containerWidth / 2)
-				.attr('y', 20)
-				.attr('text-anchor', 'middle')
-				.style('font-size', '16px')
-				.style('font-weight', 'bold')
-				.style('font-family', "'Hanken Grotesk', sans-serif")
-				.text(title);
-		}
+		const g = d3
+			.select(svg)
+			.attr('width', containerWidth)
+			.attr('height', height)
+			.append('g')
+			.attr('transform', `translate(${margin.left},${margin.top})`);
 
 		// Create scales
 		const xScale = d3.scaleTime().domain(xDomain).range([0, chartWidth]);
@@ -178,7 +173,7 @@
 			.y((d) => yScale(d.y));
 
 		// Create line generator for user points (spline/curve)
-		const userLineGenerator = d3
+		const userLineGenerator: d3.Line<any> = d3
 			.line()
 			.x((d) => xScale(d.x))
 			.y((d) => yScale(d.y))
@@ -189,19 +184,8 @@
 			.append('g')
 			.attr('transform', `translate(0,${chartHeight})`)
 			.call(d3.axisBottom(xScale).tickSize(0).tickSizeOuter(0).tickPadding(10));
-		// Increase Y axis font size
+		// Increase X axis font size
 		xAxis.selectAll('text').style('font-size', '14px');
-
-		// Add X axis label
-		xAxis
-			.append('text')
-			.attr('x', chartWidth / 2)
-			.attr('y', 40)
-			.attr('fill', 'black')
-			.attr('text-anchor', 'middle')
-			.style('font-size', '12px')
-			.style('font-family', "'Hanken Grotesk', sans-serif")
-			.text(xAxisLabel);
 
 		// Add Y axis with labels only (no ticks, just domain line)
 		const yAxis = g.append('g').call(d3.axisLeft(yScale).ticks(6).tickSize(0).tickPadding(10));
@@ -242,18 +226,6 @@
 
 		// Remove the vertical grid domain line
 		g.selectAll('.grid .domain').remove();
-
-		// Add Y axis label
-		yAxis
-			.append('text')
-			.attr('transform', 'rotate(-90)')
-			.attr('x', -chartHeight / 2)
-			.attr('y', -45)
-			.attr('fill', 'black')
-			.attr('text-anchor', 'middle')
-			.style('font-size', '12px')
-			.style('font-family', "'Hanken Grotesk', sans-serif")
-			.text(yAxisLabel);
 
 		// Add the line and data points only if reveal is true
 		if (reveal) {
@@ -330,6 +302,13 @@
 	});
 </script>
 
+{#if title}
+	<h1 class="chart-title">{title}</h1>
+{/if}
+{#if subtitle}
+	<p class="chart-subtitle">{subtitle}</p>
+{/if}
+
 <div class="chart-container">
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<svg
@@ -344,9 +323,23 @@
 </div>
 
 <style>
+	.chart-title {
+		font-size: 1.5rem;
+		font-weight: bold;
+		margin: 0 0 0.5rem 0;
+		font-family: 'Hanken Grotesk', sans-serif;
+	}
+
+	.chart-subtitle {
+		font-size: 1rem;
+		color: #666;
+		margin: 0 0 1rem 0;
+		font-family: 'Hanken Grotesk', sans-serif;
+	}
+
 	.chart-container {
 		width: 100%;
-		margin: 2rem 0;
+		margin: 0;
 	}
 
 	svg {
