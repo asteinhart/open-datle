@@ -2,9 +2,13 @@ import polars as pl
 from sodapy import Socrata
 import os
 import json
+import requests
+from pathlib import Path
 
 
 from data.utils.env import APP_TOKEN, PASSWORD
+
+PREPARED_DATA_DIR = Path("./data/prepared_data")
 
 # Borough mapping for NYC order-type datasets
 BOROUGH_MAP = {
@@ -53,31 +57,29 @@ def fetch_data_from_api(dataset_identifier: str, limit: int = 1000) -> pl.DataFr
     return df
 
 
-def verify_line(dataset: dict) -> bool:
+def load_data(
+    dataset_identifier: str, limit: int = 1000, save_local: bool = True
+) -> pl.DataFrame:
     """
-    Verify if the dataset conforms to the "line" format.
-
-    Expected format:
-    {
-        "title": str,
-        "type": "line",
-        "city": str,
-        "subtitle": str (optional),
-        "y_min": float (optional),
-        "y_max": float (optional),
-        "source": str (optional),
-        "data": [
-            {"x": float, "y": float, "sort_order": int},
-            ...
-        ]
-    }
+    Load data from a local parquet file if it exists, otherwise fetch from API.
 
     Parameters:
-    - dataset: The dataset to verify.
+    - dataset_identifier: The identifier of the dataset to load.
+    - limit: The maximum number of records to fetch if loading from API.
 
     Returns:
-    - True if the dataset is in "line" format, False otherwise.
+    - A Polars DataFrame containing the loaded data.
     """
+    file_path = f"data/temp_data/{dataset_identifier}.parquet"
+
+    if os.path.exists(file_path):
+        data = pl.read_parquet(file_path)
+    else:
+        data = fetch_data_from_api(dataset_identifier, limit=limit)
+        if save_local:
+            data.write_parquet(file_path)
+
+    return data
 
 
 def verify_dataset(
@@ -176,6 +178,8 @@ def verify_dataset(
 
 def prepare_dataset_for_db(
     dataset: dict,
+    dataset_x: str,
+    dataset_y: str,
     title: str,
     type: str,
     city: str,
@@ -184,9 +188,9 @@ def prepare_dataset_for_db(
     y_min: float = None,
     y_max: float = None,
     note: str = None,
-    export_to_json: bool = False,
-    verbose: bool = False,
-) -> bool:
+    export_to_json: bool = True,
+    verbose: bool = True,
+) -> str:
     """
     Prepare dataset for database insertion.
 
@@ -206,7 +210,7 @@ def prepare_dataset_for_db(
         "source": source,
         "note": note,
         "data": [
-            {"x": row["borough"], "y": row["len"], "sort_order": idx + 1}
+            {"x": row[dataset_x], "y": row[dataset_y], "sort_order": idx + 1}
             for idx, row in enumerate(dataset.iter_rows(named=True))
         ],
     }
@@ -223,12 +227,11 @@ def prepare_dataset_for_db(
 
     if export_to_json:
         try:
-            if not os.path.exists("prepared_data"):
-                os.makedirs("prepared_data")
+            if not os.path.exists("data/prepared_data"):
+                os.makedirs("data/prepared_data")
 
-            file_name = (
-                f"prepared_data/{staging['title'].replace(' ', '_').lower()}.json"
-            )
+            json_name = f"{staging['title'].replace(' ', '_').lower()}.json"
+            file_name = f"data/prepared_data/{json_name}"
 
             with open(file_name, "w") as f:
                 json.dump(staging, f)
@@ -238,4 +241,121 @@ def prepare_dataset_for_db(
         except Exception as e:
             print(f"Error exporting to JSON: {e}")
 
-    return True
+    return json_name
+
+
+def upload_dataset(
+    filename: str, api_url: str = "http://localhost:5173/api/v1/dataset"
+) -> bool:
+    """
+    Upload a prepared dataset JSON file to the API
+
+    Parameters:
+    - filename: Name of the JSON file in data/prepared_data/ directory
+    - api_url: API endpoint URL (default: http://localhost:5173/api/v1/dataset)
+
+    Returns:
+    - True if upload successful, False otherwise
+    """
+
+    try:
+        # Construct file path
+        file_path = PREPARED_DATA_DIR / filename
+
+        # Check if file exists
+        if not file_path.exists():
+            print(f"❌ Error: File not found: {file_path}")
+            print(f"\nAvailable files in {PREPARED_DATA_DIR}:")
+
+            if PREPARED_DATA_DIR.exists():
+                files = [f.name for f in PREPARED_DATA_DIR.glob("*.json")]
+                for f in files:
+                    print(f"  - {f}")
+            return False
+
+        # Read and parse JSON file
+        print(f"📂 Reading file: {file_path}")
+        with open(file_path, "r", encoding="utf-8") as f:
+            dataset = json.load(f)
+
+        # Validate required fields
+        if not all(key in dataset for key in ["title", "type", "city", "data"]):
+            print("❌ Error: Dataset missing required fields (title, type, city, data)")
+            return False
+
+        print(f"📊 Dataset: {dataset['title']}")
+        print(f"   Type: {dataset['type']}")
+        print(f"   City: {dataset['city']}")
+        print(f"   Data points: {len(dataset['data'])}")
+
+        # Upload to API
+        print(f"\n🚀 Uploading to {api_url}...")
+
+        response = requests.post(
+            api_url,
+            headers={"Content-Type": "application/json"},
+            json=dataset,
+        )
+
+        result = response.json()
+
+        if response.ok:
+            print(f"✅ Success! Dataset created with ID: {result['dataset_id']}")
+            if "message" in result:
+                print(f"   Message: {result['message']}")
+            print(f"\n🔗 View at: {api_url}?id={result['dataset_id']}")
+            return True
+        else:
+            print(f"❌ Error: {response.status_code} {response.reason}")
+            print(f"   {result.get('error', json.dumps(result))}")
+            return False
+
+    except Exception as error:
+        print(f"❌ Error: {error}")
+        return False
+
+
+def delete_dataset(
+    dataset_id: int, api_url: str = "http://localhost:5173/api/v1/dataset"
+) -> bool:
+    """
+    Delete a dataset from the API
+
+    Parameters:
+    - dataset_id: ID of the dataset to delete
+    - api_url: API endpoint URL (default: http://localhost:5173/api/v1/dataset)
+
+    Returns:
+    - True if deletion successful, False otherwise
+    """
+
+    try:
+        print(f"\nDeleting dataset with ID: {dataset_id}...")
+
+        response = requests.delete(
+            f"{api_url}?id={dataset_id}",
+            headers={"Content-Type": "application/json"},
+        )
+
+        result = response.json()
+
+        if response.ok:
+            print("✅ Dataset deleted successfully")
+            print(f"Dataset ID: {result['dataset_id']}")
+            return True
+        else:
+            print("❌ Failed to delete dataset")
+            print(f"Error: {result.get('error', 'Unknown error')}")
+            return False
+
+    except Exception as error:
+        print(f"❌ Error deleting dataset: {error}")
+        return False
+
+
+## option to just run upload or delete from here
+if __name__ == "__main__":
+    # Example usage:
+    # upload_dataset("example_dataset.json")
+    # delete_dataset(3)
+    pass
