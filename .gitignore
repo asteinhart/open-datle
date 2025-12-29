@@ -4,3 +4,4 @@
 *.parquet
 *.db
 llm-medium.txt
+env.py
