@@ -167,8 +167,8 @@ export const POST: RequestHandler = async ({ request }) => {
 				type: body.type,
 				city: body.city,
 				subtitle: body.subtitle || null,
-				yMin: body.y_min || null,
-				yMax: body.y_max || null,
+				yMin: body.y_min ?? null,
+				yMax: body.y_max ?? null,
 				source: body.source || null,
 				note: body.note || null
 			},
