@@ -41,7 +41,7 @@ def air_quality_per_year(data) -> dict:
         .sort("year")
     )
 
-    filename = prepare_dataset_for_db(
+    prepare_dataset_for_db(
         dataset=averages_pm25_mean,
         dataset_x="year",
         dataset_y="avg_pm25",
@@ -55,7 +55,7 @@ def air_quality_per_year(data) -> dict:
         note=None,
     )
 
-    return True
+    return filename
 
 
 if __name__ == "__main__":
