@@ -18,7 +18,7 @@
 
 	let svg: any;
 	let containerWidth = $state(width);
-	const margin = { top: 40, right: 30, bottom: 50, left: 60 };
+	const margin = { top: 40, right: 30, bottom: 50, left: 100 };
 
 	// Update width on mount and resize
 	onMount(() => {
