@@ -7,3 +7,9 @@ llm-medium.txt
 env.py
 __pycache__/
 **.ipynb
+.vercel
+.env*.local
+
+.agents/
+.cursor/
+.github/
