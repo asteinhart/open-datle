@@ -9,18 +9,32 @@
 	import type { UserData } from '$lib/types/UserData';
 	import type { DataSet } from '$lib/types/DataSet';
 
-	import { currentGuess, revealAnswer, orderSlots, correctSlots } from '$lib/stores/utils';
+	import {
+		currentGuess,
+		revealAnswer,
+		orderSlots,
+		correctSlots,
+		incorrectSlots,
+		lastScorePercentage
+	} from '$lib/stores/utils';
 
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+
+	// Get server data (today's dataset)
+	let { data: serverData } = $props();
 
 	let data = $state(null as DataSet | null);
 	let reveal: boolean = $state(false);
 	let loading: boolean = $state(true);
 
-	// Get dataset ID from URL parameter or default to 1
-	// Access query parameters (e.g., /search?q=svelte)
-	let dataset_id: number = $derived(parseInt(page.url.searchParams.get('id') || '1'));
+	// Get dataset ID from URL parameter, or use today's dataset from server, or default to 1
+	let dataset_id: number = $derived(
+		parseInt(page.url.searchParams.get('id') || '') || serverData?.todayDatasetId || 1
+	);
+
+	// admin mode
+	let isAdmin: boolean = $derived(page.url.searchParams.get('admin') === 'true');
 
 	onMount(() => {
 		// find data for chart using api
@@ -38,18 +52,30 @@
 	});
 
 	let chart: any;
-
-	function handleSubmit() {
-		const userDrawing = chart.getUserPoints();
-		console.log('User drew:', userDrawing);
-	}
-
-	function handleClear() {
-		chart.clearDrawing();
-	}
 </script>
 
 <Header />
+{#if isAdmin}
+	<div class="button-group">
+		<button
+			onclick={() => {
+				const newId = dataset_id - 1 > 0 ? dataset_id - 1 : 1;
+				window.location.search = `?id=${newId}${isAdmin ? '&admin=true' : ''}`;
+			}}
+		>
+			Previous Dataset
+		</button>
+		<span>Dataset ID: {dataset_id}</span>
+		<button
+			onclick={() => {
+				const newId = dataset_id + 1;
+				window.location.search = `?id=${newId}${isAdmin ? '&admin=true' : ''}`;
+			}}
+		>
+			Next Dataset
+		</button>
+	</div>
+{/if}
 <Instructions />
 
 {#if loading}
@@ -65,9 +91,10 @@
 				yMin={data.yMin}
 				yMax={data.yMax}
 				reveal={$revealAnswer}
+				lastScore={$lastScorePercentage}
 			/>
+			<SubmitChart {data} guess={$currentGuess} />
 		</div>
-		<SubmitChart guess={$currentGuess} {data} />
 	{:else if data.type == 'order'}
 		<div class="chart-wrapper">
 			<InteractiveOrder
@@ -76,9 +103,16 @@
 				reveal={$revealAnswer}
 				bind:slots={$orderSlots}
 				bind:correctSlots={$correctSlots}
+				bind:incorrectSlots={$incorrectSlots}
+			/>
+
+			<SubmitOrder
+				{data}
+				bind:slots={$orderSlots}
+				bind:correctSlots={$correctSlots}
+				bind:incorrectSlots={$incorrectSlots}
 			/>
 		</div>
-		<SubmitOrder {data} bind:slots={$orderSlots} bind:correctSlots={$correctSlots} />
 	{/if}
 {:else}
 	<div class="error">Failed to load chart data</div>
@@ -87,7 +121,11 @@
 <style>
 	.chart-wrapper {
 		max-width: 600px;
+		width: 100%;
 		margin: 1rem auto;
+		border: 2px solid #ddd;
+		margin-bottom: 4rem;
+		border-radius: 8px;
 	}
 
 	.button-group {
@@ -105,7 +143,11 @@
 		font-size: 1.2rem;
 	}
 
-	.error {
-		color: red;
+	@media (max-width: 768px) {
+		.chart-wrapper {
+			margin: 0.5rem auto;
+			margin-bottom: 2rem;
+			border-radius: 4px;
+		}
 	}
 </style>

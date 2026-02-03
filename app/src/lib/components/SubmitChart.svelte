@@ -1,7 +1,13 @@
 <script lang="ts">
 	import type { UserLine } from '$lib/types/UserLine';
 	import type { DataSet } from '$lib/types/DataSet';
-	import { currentGuess, guesses, revealAnswer } from '$lib/stores/utils';
+	import {
+		currentGuess,
+		guesses,
+		revealAnswer,
+		score,
+		lastScorePercentage
+	} from '$lib/stores/utils';
 
 	let { data, guess } = $props<{
 		data: DataSet;
@@ -14,88 +20,110 @@
 	let maxGuesses = 3;
 	let feedback = $state('');
 	let gameState = $state<GameStateType>('playing');
+	let accuracyText = $state('');
+	let accuracyClass = $state('');
 
-	function guessScore(guess: UserLine, data: DataSet): string {
-		// attempt to calculate area between curve
+	function guessScore(guess: UserLine, data: DataSet): { status: string; percentage: number } {
+		// Check if 75% of segments are good and no segment is under ok
+		console.log('Calculating guess score...');
+		console.log('User guess points:', guess.points);
+		console.log('Actual data points:', data.data);
 
-		// loop though both list and take the next two points
-		let totalAreaDifference = 0;
-		let goodScore = 0;
-		let okScore = 0;
 		let dataPoints = data.data;
-
-		// how to detemrine good score
-		// take max min of y, break into 10, if within 2 then good, within 5 then ok, else bad
 		let dataMaxY = Math.max(...dataPoints.map((d) => d.y));
 		let dataMinY = Math.min(...dataPoints.map((d) => d.y));
 		let unit = (dataMaxY - dataMinY) / 10;
 
-		// I think i can just do data length will force guess to be same length
-		for (let i = 0; i < dataPoints.length - 1; i++) {
+		let totalSegments = dataPoints.length - 1;
+		let goodCount = 0;
+		let okCount = 0;
+		let totalAreaDiff = 0;
+
+		for (let i = 0; i < totalSegments; i++) {
 			const userPoint1 = guess.points[i];
 			const userPoint2 = guess.points[i + 1];
 
 			const dataPoint1 = data.data[i];
 			const dataPoint2 = data.data[i + 1];
 
-			// calculate real score
-			// which line is on top
+			// calculate area difference for this segment
 			let a =
 				userPoint2.y > dataPoint2.y ? userPoint2.y - dataPoint2.y : dataPoint2.y - userPoint2.y;
 			let b =
 				userPoint1.y > dataPoint1.y ? userPoint1.y - dataPoint1.y : dataPoint1.y - userPoint1.y;
-
-			//always a constant so can just be 1
-			let h = 1;
-
-			// hmm trapezoid
+			let h = 1; // constant
 			let areaDifference = ((a + b) / 2) * h;
-			totalAreaDifference += areaDifference;
 
-			// calculate good and ok score
-			let goodArea = (1.5 * unit + 1.5 * unit) / 2; // this is dumb but for me
-			goodScore += goodArea;
+			totalAreaDiff += areaDifference;
 
+			let goodArea = (1.5 * unit + 1.5 * unit) / 2;
 			let okArea = (2 * unit + 2 * unit) / 2;
-			okScore += okArea;
+
+			if (areaDifference <= goodArea) goodCount++;
+			if (areaDifference <= okArea) okCount++;
 		}
 
-		// todo, only need to calculate good and ok score once
+		// Calculate the worst possible guess: each user point is at the furthest bound (max or min y)
+		let worstTotalDiff = 0;
+		for (let i = 0; i < dataPoints.length; i++) {
+			const dataY = dataPoints[i].y;
+			const furthestY =
+				Math.abs(dataY - dataMaxY) > Math.abs(dataY - dataMinY) ? dataMaxY : dataMinY;
+			worstTotalDiff += Math.abs(dataY - furthestY);
+		}
 
-		if (totalAreaDifference <= goodScore) {
-			return 'won';
-		} else if (totalAreaDifference <= okScore) {
-			return 'close';
+		// Calculate user's total difference
+		let userTotalDiff = 0;
+		for (let i = 0; i < dataPoints.length; i++) {
+			userTotalDiff += Math.abs(dataPoints[i].y - guess.points[i].y);
+		}
+
+		let percentage =
+			worstTotalDiff === 0
+				? 100
+				: Math.round(Math.max(0, (1 - userTotalDiff / worstTotalDiff) * 100));
+
+		let status: string;
+		if (goodCount >= 0.75 * totalSegments && okCount === totalSegments) {
+			status = 'won';
+		} else if (okCount === totalSegments) {
+			status = 'close';
 		} else {
-			return 'wrong';
+			status = 'wrong';
 		}
+
+		return { status, percentage };
 	}
 
 	function updateGameState() {
 		// check if guess accurate
-		let guessStatus = guessScore(guess, data);
+		let result = guessScore(guess, data);
+		let guessStatus = result.status;
+		let percentage = result.percentage;
+
+		score.set(guessStatus);
+		lastScorePercentage.set(percentage);
 
 		$guesses = [...$guesses, guess];
 		$currentGuess = { points: [] };
 
+		accuracyText = `${percentage}%`;
+		accuracyClass = result.status === 'won' ? 'correct' : percentage >= 50 ? 'close' : 'far-off';
+
 		if (guessStatus === 'won') {
 			gameState = 'won';
-			feedback = 'Congratulations! Your guess is very close to the actual line.';
+			feedback = 'Congratulations! Your guess is';
 			$revealAnswer = true;
 			return;
 		} else {
 			if (numGuesses >= maxGuesses) {
 				gameState = 'lost';
-				feedback = 'Sorry, you have used all your guesses. The correct answer is now revealed.';
-
+				feedback = 'Sorry, you have used all your guesses. Your last guess was';
 				$revealAnswer = true;
 				numGuesses++;
 				return;
 			} else {
-				feedback =
-					guessStatus === 'close'
-						? 'Not quite there, but you are close! Try again.'
-						: 'That guess was off the mark. Give it another shot!';
+				feedback = 'Not quite there, your guess is';
 				gameState = 'playing';
 				numGuesses++;
 			}
@@ -121,7 +149,29 @@
 	{/if}
 
 	{#if feedback}
-		<div class="feedback">{feedback}</div>
+		<div class="feedback">
+			{#if gameState === 'won'}
+				{feedback} <span class="accuracy {accuracyClass}">{accuracyText} correct</span> and very
+				close to the actual line.
+				<br />
+				<div class="dataset-info">
+					<p>
+						This data is from the dataset <strong>{data.title}</strong> from NYC Open Data.
+						<a href={data.source} target="_blank">Learn more about it here</a>.
+					</p>
+					<p>
+						<a href="https://opendata.cityofnewyork.us/" target="_blank"
+							>Learn more about NYC Open Data here</a
+						>.
+					</p>
+				</div>
+			{:else if gameState === 'lost'}
+				{feedback} <span class="accuracy {accuracyClass}">{accuracyText} correct</span>. The correct
+				answer is now revealed.
+			{:else}
+				{feedback} <span class="accuracy {accuracyClass}">{accuracyText} correct</span>. Try again.
+			{/if}
+		</div>
 	{/if}
 
 	{#if gameState === 'playing'}
@@ -129,10 +179,10 @@
 			<button
 				class="submit-btn"
 				onclick={handleSubmit}
-				disabled={numGuesses > maxGuesses || guess.length < data.length}
+				disabled={numGuesses > maxGuesses || guess.points.length < data.data.length}
 			>
 				{#if numGuesses <= maxGuesses}
-					Submit Guess {numGuesses}/{maxGuesses}
+					Submit Guess
 				{:else}
 					Lost
 				{/if}
@@ -145,7 +195,7 @@
 <style>
 	.submit-container {
 		max-width: 500px;
-		margin: 2rem auto;
+		margin: 0 auto 1rem auto;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
@@ -171,27 +221,40 @@
 	}
 
 	.dot.current {
-		background-color: #2196f3;
-		animation: pulse 1s infinite;
-	}
-
-	@keyframes pulse {
-		0%,
-		100% {
-			transform: scale(1);
-		}
-		50% {
-			transform: scale(1.2);
-		}
+		background-color: steelblue;
 	}
 
 	.feedback {
+		width: 80%;
 		padding: 1rem;
 		background-color: #f0f0f0;
 		border-radius: 8px;
-		text-align: center;
+		text-align: left;
 		font-size: 1rem;
 		color: #333;
+		border: 2px solid #333;
+	}
+
+	.accuracy {
+		font-weight: bold;
+	}
+
+	.accuracy.correct {
+		text-decoration: underline;
+		text-decoration-color: steelblue;
+		text-decoration-thickness: 2px;
+	}
+
+	.accuracy.close {
+		text-decoration: underline;
+		text-decoration-color: #ffb347;
+		text-decoration-thickness: 2px;
+	}
+
+	.accuracy.far-off {
+		text-decoration: underline;
+		text-decoration-color: #e74c3c;
+		text-decoration-thickness: 2px;
 	}
 
 	.button-group {
@@ -200,7 +263,7 @@
 	}
 
 	button {
-		padding: 0.75rem 1.5rem;
+		padding: 0.5rem 1.5rem;
 		border: none;
 		border-radius: 8px;
 		font-size: 1rem;
@@ -224,21 +287,24 @@
 	}
 
 	.submit-btn {
-		background-color: #2196f3;
-		color: white;
+		border: solid 3px steelblue;
+		background-color: white;
 		font-weight: bold;
 	}
 
 	.submit-btn:hover:not(:disabled) {
-		background-color: #1976d2;
-	}
-
-	.give-up-btn {
-		background-color: #f44336;
+		background-color: steelblue;
 		color: white;
 	}
 
+	.give-up-btn {
+		border: #b32303 solid 3px;
+		background-color: white;
+		font-weight: bold;
+	}
+
 	.give-up-btn:hover {
-		background-color: #d32f2f;
+		background-color: #b32303;
+		color: white;
 	}
 </style>

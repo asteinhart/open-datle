@@ -25,7 +25,8 @@
 		border-radius: 8px;
 		padding: 1rem;
 		margin: 1rem auto;
-		max-width: 500px;
+		width: 600px;
+		box-sizing: border-box;
 	}
 
 	.toggle-button {
@@ -74,5 +75,21 @@
 
 	li:last-child {
 		margin-bottom: 0;
+	}
+
+	@media (max-width: 768px) {
+		.instructions-box {
+			width: 100%;
+			padding: 0.5rem;
+			margin: 0.5rem auto;
+		}
+
+		h2 {
+			font-size: 1rem;
+		}
+
+		li {
+			font-size: 0.85rem;
+		}
 	}
 </style>

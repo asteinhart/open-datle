@@ -61,4 +61,26 @@
 	nav a:hover {
 		text-decoration: underline;
 	}
+
+	@media (max-width: 768px) {
+		header {
+			flex-direction: column;
+			padding: 0.5rem 1rem;
+		}
+
+		.date {
+			text-align: center;
+			margin-bottom: 0.5rem;
+		}
+
+		.title {
+			margin: 0.5rem 0;
+			font-size: 1.5rem;
+		}
+
+		nav {
+			text-align: center;
+			margin-top: 0.5rem;
+		}
+	}
 </style>

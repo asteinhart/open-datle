@@ -3,73 +3,42 @@
 		title = 'Problem Title',
 		data = [],
 		reveal = false,
+		submitted = false,
 		slots = $bindable([null, null, null, null, null]),
-		correctSlots = $bindable(new Set<number>())
+		correctSlots = $bindable(new Set<number>()),
+		incorrectSlots = $bindable(new Set<number>())
 	} = $props();
 
 	const boroughs = ['Manhattan', 'Brooklyn', 'Queens', 'The Bronx', 'Staten Island'];
 
 	const boroughColors: Record<string, string> = {
-		Manhattan: '#7DD5C080',
-		Brooklyn: '#00000080',
-		Queens: '#FF591080',
-		'The Bronx': '#00308780',
-		'Staten Island': '#A9B8C780'
+		Manhattan: '#004B8D90',
+		Brooklyn: '#00000090',
+		Queens: '#B933AD90',
+		'The Bronx': '#14244890',
+		'Staten Island': '#A9B8C790'
 	};
+
+	const formatter = new Intl.NumberFormat('en', {
+		notation: 'compact',
+		compactDisplay: 'short' // ensures 'K' and 'M' instead of 'thousand' or 'million'
+	});
 
 	let availableBoroughs: string[] = $state([...boroughs]);
 	let draggedItem: string | null = $state(null);
 	let draggedFromSlot: number | null = $state(null);
-	let isAnimating = $state(false);
-	let animationOffsets: Record<number, number> = $state({});
 
 	$inspect('slots', slots);
 
-	// Watch for reveal changes and auto-sort
+	// Watch for reveal or submitted changes and auto-sort
 	$effect(() => {
-		if (reveal && data && data.length > 0) {
-			isAnimating = true;
-
+		if ((reveal || (submitted && correctSlots.size < 5)) && data && data.length > 0) {
 			// Sort data by sort_order to get correct positions
 			const sorted = [...data].sort((a, b) => a.sort_order - b.sort_order);
-
-			// Store current positions before updating
-			const currentPositions = new Map<string, number>();
-			slots.forEach((borough, index) => {
-				if (borough) currentPositions.set(borough, index);
-			});
-
-			// Calculate offsets for items that are moving
-			const newOffsets: Record<number, number> = {};
-			const newSlots = sorted.map((item) => item.x);
-
-			newSlots.forEach((borough, targetIndex) => {
-				const currentIndex = currentPositions.get(borough);
-				if (currentIndex !== undefined) {
-					// This borough is moving - calculate offset
-					const rowHeight = 76; // 60px + 16px gap
-					newOffsets[targetIndex] = (currentIndex - targetIndex) * rowHeight;
-				}
-			});
-
-			// Set offsets first
-			animationOffsets = newOffsets;
-
-			// Then update slots after a tiny delay to trigger animation
-			setTimeout(() => {
-				slots = newSlots;
-				availableBoroughs = [];
-
-				// Clear offsets after animation completes
-				setTimeout(() => {
-					animationOffsets = {};
-					isAnimating = false;
-				}, 1200);
-			}, 50);
+			slots = sorted.map((item) => item.x);
+			availableBoroughs = [];
 		} else if (!reveal) {
 			// Reset when reveal is turned off
-			isAnimating = false;
-			animationOffsets = {};
 			slots = [null, null, null, null, null];
 			availableBoroughs = [...boroughs];
 		}
@@ -89,6 +58,21 @@
 
 		// If dragging from available boroughs
 		if (draggedFromSlot === null) {
+			// if slot already has an item move that one down to available in slote
+			if (slots[slotIndex] !== null) {
+				const temp = slots[slotIndex];
+
+				// Find the next available (null) slot to move temp into
+				if (temp !== null) {
+					const nextNull = slots.findIndex((s, i) => s === null && i !== slotIndex);
+					if (nextNull !== -1) {
+						slots[nextNull] = temp;
+					} else {
+						// If no empty slot, put temp back to availableBoroughs
+						availableBoroughs = [...availableBoroughs, temp];
+					}
+				}
+			}
 			slots[slotIndex] = draggedItem;
 			availableBoroughs = availableBoroughs.filter((b) => b !== draggedItem);
 		}
@@ -123,8 +107,11 @@
 </script>
 
 <div class="order-container">
-	<h1>Rank the borouhgs in order of {title}</h1>
-	<h2>Drag and drop the boroughs into the correct order from 1 (highest) to 5 (lowest).</h2>
+	<div class="rank">RANK THE BOROUGHS</div>
+	<h1 class="title">{title}</h1>
+	<h2 class="subtitle">
+		Drag and drop the boroughs into the correct order from 1 (highest) to 5 (lowest).
+	</h2>
 
 	<div class="main-container">
 		<div class="slots-container">
@@ -135,19 +122,33 @@
 						ondragover={handleDragOver}
 						ondrop={() => handleDropOnSlot(index)}
 					>
-						<span class="slot-number">{index + 1}</span>
+						{#if slot === null}
+							<span class="slot-number">{index + 1}</span>
+						{/if}
 						{#if slot !== null}
 							<div
 								class="borough-box placed"
-								class:animating={animationOffsets[index] !== undefined}
-								class:correct={correctSlots.has(index)}
-								draggable="true"
+								class:revealed={correctSlots.has(index) || reveal}
+								class:dark-text={['Brooklyn', 'The Bronx'].includes(slot)}
+								class:light-bg={['Staten Island', 'Manhattan', 'Queens'].includes(slot)}
+								class:incorrect-bg={incorrectSlots.has(index) && !reveal}
+								draggable={!correctSlots.has(index)}
 								ondragstart={() => handleDragStart(slot, index)}
-								style="border-color: {boroughColors[slot]}; {animationOffsets[index] !== undefined
-									? `--offset: ${animationOffsets[index]}px;`
+								style="{!(incorrectSlots.has(index) && !reveal)
+									? `border-color: ${boroughColors[slot]};`
+									: ''} {correctSlots.has(index) || reveal
+									? `background-color: ${boroughColors[slot]};`
 									: ''}"
 							>
-								{slot}
+								<div class="left-content">
+									<span class="slot-number">{index + 1}</span>
+									<span class="borough-name">{slot}</span>
+								</div>
+								{#if correctSlots.has(index) || reveal}
+									<div class="right-content">
+										{formatter.format(data.find((item) => item.x === slot)?.y)}
+									</div>
+								{/if}
 							</div>
 						{/if}
 					</div>
@@ -171,10 +172,34 @@
 </div>
 
 <style>
+	.rank {
+		font-size: 1rem;
+		margin: 0 0 0.3rem 0;
+		border: #999 2px dashed;
+		border-radius: 6px;
+		padding-inline: 4px;
+		padding-block: 1.5px;
+		width: fit-content;
+		font-weight: 500;
+	}
+	.title {
+		font-size: 1.5rem;
+		font-weight: bold;
+		margin: 0 0 0.5rem 0;
+		font-family: 'Hanken Grotesk', sans-serif;
+	}
+
+	.subtitle {
+		font-size: 1rem;
+		color: #666;
+		margin: 0 0 2rem 0;
+		font-family: 'Hanken Grotesk', sans-serif;
+	}
 	.order-container {
 		max-width: 800px;
 		margin: 0 auto 1rem;
 		padding: 1rem;
+		border-radius: 4px;
 	}
 
 	h1 {
@@ -213,7 +238,6 @@
 		align-items: center;
 		justify-content: center;
 		background-color: #f9f9f9;
-		transition: all 0.2s;
 		position: relative;
 	}
 
@@ -224,7 +248,6 @@
 		align-items: center;
 		justify-content: center;
 		background-color: #f9f9f9;
-		transition: all 0.2s;
 		position: relative;
 	}
 
@@ -246,10 +269,6 @@
 		background-color: transparent;
 	}
 
-	.borough-box {
-		width: 100%;
-	}
-
 	.available-container {
 		display: flex;
 		flex-direction: column;
@@ -259,11 +278,12 @@
 
 	.borough-box {
 		background-color: white;
-		border: 2px solid #ddd;
+		border: 3.5px solid #ddd;
 		border-radius: 8px;
 		padding: 0 1rem;
 		text-align: center;
 		font-size: 1.1rem;
+		width: 100%;
 		cursor: move;
 		user-select: none;
 		height: 60px;
@@ -271,25 +291,83 @@
 		align-items: center;
 		justify-content: center;
 		box-sizing: border-box;
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
+		font-weight: 550;
 	}
 
 	.borough-box.placed {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0 2rem;
 		width: 100%;
 		height: 100%;
-		border: 2px solid;
 		margin: 0;
-		padding: 1rem;
+		font-size: 1.1rem;
+		font-weight: 550;
+		box-sizing: border-box;
 	}
 
-	.borough-box.placed.animating {
-		animation: slideToPosition 5s ease-in-out;
+	.borough-box.placed .left-content {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 
-	.borough-box.placed.correct {
-		background-color: #d4edda;
+	.borough-box.placed .right-content {
+		margin-left: auto;
+		font-size: 1.2rem;
+		color: #666;
+		font-weight: 550;
+	}
+
+	.borough-box.placed .slot-number {
+		font-size: 1.2rem;
+		font-weight: bold;
+		color: #333;
+	}
+
+	.borough-box.placed .borough-name {
+		padding-left: 0.5rem;
+		color: black;
+	}
+
+	.animation-wrapper {
+		position: relative;
+		width: 100%;
+		height: 100%;
+	}
+
+	.animation-wrapper.animating {
+		animation: slideToPosition 2s ease-in-out;
+	}
+
+	.borough-box.placed.incorrect-bg {
+		background-color: #fdd;
+		border-color: rgb(130, 0, 0);
+	}
+
+	.borough-box.placed.revealed .slot-number {
+		color: white !important;
+	}
+
+	.borough-box.placed.revealed .borough-name {
+		color: white !important;
+	}
+
+	.borough-box.placed.revealed.light-bg .borough-name {
+		color: black !important;
+	}
+
+	.borough-box.placed.revealed.light-bg .slot-number {
+		color: black !important;
+	}
+
+	.borough-box.placed.revealed.light-bg .right-content {
+		color: black !important;
+	}
+
+	.borough-box.placed.revealed .right-content {
+		color: white !important;
 	}
 
 	@keyframes slideToPosition {
@@ -299,11 +377,6 @@
 		to {
 			transform: translateY(0);
 		}
-	}
-
-	.borough-box:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 	}
 
 	.borough-box:active {

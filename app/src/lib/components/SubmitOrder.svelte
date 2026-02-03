@@ -5,12 +5,17 @@
 	let {
 		data,
 		slots = $bindable(),
-		correctSlots = $bindable(new Set<number>())
+		correctSlots = $bindable(new Set<number>()),
+		incorrectSlots = $bindable(new Set<number>())
 	} = $props<{
 		data: DataSet;
 		slots?: (string | null)[];
 		correctSlots?: Set<number>;
+		incorrectSlots?: Set<number>;
 	}>();
+
+	$inspect('correctSlots', correctSlots);
+	$inspect('incorrectSlots', incorrectSlots);
 
 	type GameStateType = 'playing' | 'won' | 'lost';
 
@@ -33,15 +38,19 @@
 		// Count how many are correct
 		let correctCount = 0;
 		const newCorrectSlots = new Set<number>();
+		const newIncorrectSlots = new Set<number>();
 
 		slots.forEach((borough, index) => {
 			if (borough === correctOrder[index]) {
 				correctCount++;
 				newCorrectSlots.add(index);
+			} else {
+				newIncorrectSlots.add(index);
 			}
 		});
 
 		correctSlots = newCorrectSlots;
+		incorrectSlots = newIncorrectSlots;
 
 		if (correctCount === slots.length) {
 			return { correct: correctCount, status: 'won' };
@@ -120,7 +129,7 @@
 				disabled={numGuesses > maxGuesses || slots.some((slot) => slot === null)}
 			>
 				{#if numGuesses <= maxGuesses}
-					Submit Guess {numGuesses}/{maxGuesses}
+					Submit Guess
 				{:else}
 					Lost
 				{/if}
@@ -133,7 +142,7 @@
 <style>
 	.submit-container {
 		max-width: 500px;
-		margin: 2rem auto;
+		margin: 0rem auto 1rem auto;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
@@ -155,22 +164,11 @@
 	}
 
 	.dot.active {
-		background-color: #4caf50;
+		background-color: steelblue;
 	}
 
 	.dot.current {
-		background-color: #2196f3;
-		animation: pulse 1s infinite;
-	}
-
-	@keyframes pulse {
-		0%,
-		100% {
-			transform: scale(1);
-		}
-		50% {
-			transform: scale(1.2);
-		}
+		background-color: steelblue;
 	}
 
 	.feedback {
@@ -188,7 +186,7 @@
 	}
 
 	button {
-		padding: 0.75rem 1.5rem;
+		padding: 0.5rem 1.5rem;
 		border: none;
 		border-radius: 8px;
 		font-size: 1rem;
@@ -212,21 +210,24 @@
 	}
 
 	.submit-btn {
-		background-color: #2196f3;
-		color: white;
+		border: solid 3px steelblue;
+		background-color: white;
 		font-weight: bold;
 	}
 
 	.submit-btn:hover:not(:disabled) {
-		background-color: #1976d2;
-	}
-
-	.give-up-btn {
-		background-color: #f44336;
+		background-color: steelblue;
 		color: white;
 	}
 
+	.give-up-btn {
+		border: #b32303 solid 3px;
+		background-color: white;
+		font-weight: bold;
+	}
+
 	.give-up-btn:hover {
-		background-color: #d32f2f;
+		background-color: #b32303;
+		color: white;
 	}
 </style>

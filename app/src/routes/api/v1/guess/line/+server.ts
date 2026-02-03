@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import db from '$lib/db';
+import { sql } from '$lib/server/db';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -17,13 +17,15 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'user_line must be an array' }, { status: 400 });
 		}
 
-		// Insert or update user guess
-		const [result] = await db.query(
-			`INSERT INTO user_data_line (user_id, dataset_id, user_line) 
-			 VALUES (?, ?, ?) 
-			 ON DUPLICATE KEY UPDATE user_line = ?, submitted_at = CURRENT_TIMESTAMP`,
-			[user_id, dataset_id, JSON.stringify(user_line), JSON.stringify(user_line)]
-		);
+		// Insert or update user guess using PostgreSQL's ON CONFLICT
+		await sql`
+			INSERT INTO user_guesses (user_id, dataset_id, guess_data, guess_type)
+			VALUES (${user_id}, ${dataset_id}, ${JSON.stringify(user_line)}, 'line')
+			ON CONFLICT (user_id, dataset_id)
+			DO UPDATE SET 
+				guess_data = ${JSON.stringify(user_line)},
+				submitted_at = CURRENT_TIMESTAMP
+		`;
 
 		return json(
 			{

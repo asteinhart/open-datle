@@ -1,10 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { DuckDBInstance, INTEGER, VARCHAR, DOUBLE } from '@duckdb/node-api';
-import { join } from 'path';
-
-// Path to the DuckDB database file
-const DB_PATH = join(process.cwd(), '..', 'database', 'open_datle.db');
+import { sql } from '$lib/server/db';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const id = url.searchParams.get('id');
@@ -18,63 +14,41 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'ID must be a number' }, { status: 400 });
 	}
 
-	let instance;
-	let connection;
-
 	try {
-		console.log('DB_PATH:', DB_PATH);
 		console.log('Requested dataset ID:', datasetId);
 
-		instance = await DuckDBInstance.create(DB_PATH);
-		connection = await instance.connect();
-
 		// Get dataset metadata
-		const metaStmt = await connection.prepare(
-			'SELECT dataset_id, title, type, city, subtitle, y_min, y_max, source, note FROM datasets_meta WHERE dataset_id = $datasetId'
-		);
-		metaStmt.bind({ datasetId }, { datasetId: INTEGER });
-		const metaResult = await metaStmt.run();
-		const metaRows = await metaResult.getRowObjectsJson();
+		const metaResult = await sql`
+			SELECT dataset_id, title, type, city, subtitle, y_min, y_max, source, note 
+			FROM datasets_meta 
+			WHERE dataset_id = ${datasetId}
+		`;
 
-		console.log('Meta result:', metaRows);
+		console.log('Meta result:', metaResult);
 
-		if (!metaRows || metaRows.length === 0) {
+		if (!metaResult || metaResult.length === 0) {
 			return json({ error: 'Dataset not found' }, { status: 404 });
 		}
 
-		const dataset = metaRows[0] as {
-			dataset_id: number;
-			title: string;
-			type: string;
-			city: string;
-			subtitle: string | null;
-			y_min: number | null;
-			y_max: number | null;
-			source: string;
-			note: string | null;
-		};
+		const dataset = metaResult[0];
 
 		// Get data points
-		const dataStmt = await connection.prepare(
-			'SELECT x, y, sort_order FROM data WHERE dataset_id = $datasetId ORDER BY sort_order'
-		);
-		dataStmt.bind({ datasetId }, { datasetId: INTEGER });
-		const dataResult = await dataStmt.run();
-		const dataRows = await dataResult.getRowObjectsJson();
+		const dataResult = await sql`
+			SELECT x, y, sort_order 
+			FROM data 
+			WHERE dataset_id = ${datasetId} 
+			ORDER BY sort_order
+		`;
 
-		console.log('Data result:', dataRows);
-		console.log('Data result length:', dataRows ? dataRows.length : 0);
+		console.log('Data result:', dataResult);
+		console.log('Data result length:', dataResult ? dataResult.length : 0);
 
-		const data = dataRows
-			? dataRows
-					.map((row) => row as { x: number; y: number; sort_order: number })
-					.sort((a, b) => a.sort_order - b.sort_order)
-			: [];
+		const data = dataResult || [];
 
 		// Process data for borough mapping if type is "order"
 		const processedData =
 			dataset.type === 'order'
-				? data.map((point) => ({
+				? data.map((point: any) => ({
 						x:
 							Number(point.x) === 1
 								? 'Manhattan'
@@ -109,16 +83,10 @@ export const GET: RequestHandler = async ({ url }) => {
 	} catch (error) {
 		console.error('Database error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });
-	} finally {
-		if (connection) connection.closeSync();
-		if (instance) instance.closeSync();
 	}
 };
 
 export const POST: RequestHandler = async ({ request }) => {
-	let instance;
-	let connection;
-
 	try {
 		const body = await request.json();
 
@@ -127,108 +95,52 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		console.log('body:', body);
-		console.log('body.title', body.title);
-
-		instance = await DuckDBInstance.create(DB_PATH);
-		connection = await instance.connect();
 
 		// Check if dataset with same title exists
-		const existingStmt = await connection.prepare(
-			'SELECT dataset_id FROM datasets_meta WHERE title = $title'
-		);
-		existingStmt.bind({ title: body.title }, { title: VARCHAR });
-		const existingResult = await existingStmt.run();
-		const existingRows = await existingResult.getRows();
+		const existing = await sql`
+			SELECT dataset_id FROM datasets_meta WHERE title = ${body.title}
+		`;
 
-		if (existingRows && existingRows.length > 0) {
+		if (existing && existing.length > 0) {
 			return json({ error: 'A dataset with this title already exists' }, { status: 409 });
 		}
 
-		// Get the next dataset_id
-		const maxIdStmt = await connection.prepare(
-			'SELECT MAX(dataset_id) as max_id FROM datasets_meta'
-		);
-		const maxIdResult = await maxIdStmt.run();
-		const maxIdRows = await maxIdResult.getRowObjectsJson();
+		// Insert dataset metadata (SERIAL will auto-increment)
+		const insertedDataset = await sql`
+			INSERT INTO datasets_meta (title, type, city, subtitle, y_min, y_max, source, note)
+			VALUES (
+				${body.title},
+				${body.type},
+				${body.city},
+				${body.subtitle || null},
+				${body.y_min ?? null},
+				${body.y_max ?? null},
+				${body.source || null},
+				${body.note || null}
+			)
+			RETURNING dataset_id
+		`;
 
-		const nextId =
-			maxIdRows && maxIdRows.length > 0 && maxIdRows[0].max_id
-				? Number(maxIdRows[0].max_id) + 1
-				: 1;
-
-		// Insert dataset metadata
-		const insertMetaStmt = await connection.prepare(
-			'INSERT INTO datasets_meta (dataset_id, title, type, city, subtitle, y_min, y_max, source, note) VALUES ($datasetId, $title, $type, $city, $subtitle, $yMin, $yMax, $source, $note)'
-		);
-		insertMetaStmt.bind(
-			{
-				datasetId: nextId,
-				title: body.title,
-				type: body.type,
-				city: body.city,
-				subtitle: body.subtitle || null,
-				yMin: body.y_min ?? null,
-				yMax: body.y_max ?? null,
-				source: body.source || null,
-				note: body.note || null
-			},
-			{
-				datasetId: INTEGER,
-				title: VARCHAR,
-				type: VARCHAR,
-				city: VARCHAR,
-				subtitle: VARCHAR,
-				yMin: DOUBLE,
-				yMax: DOUBLE,
-				source: VARCHAR,
-				note: VARCHAR
-			}
-		);
-		await insertMetaStmt.run();
-
-		// Get the next data_id
-		const maxDataIdStmt = await connection.prepare('SELECT MAX(data_id) as max_id FROM data');
-		const maxDataIdResult = await maxDataIdStmt.run();
-		const maxDataIdRows = await maxDataIdResult.getRowObjectsJson();
-
-		let nextDataId =
-			maxDataIdRows && maxDataIdRows.length > 0 && maxDataIdRows[0].max_id
-				? Number(maxDataIdRows[0].max_id) + 1
-				: 1;
+		const datasetId = insertedDataset[0].dataset_id;
 
 		// Insert data points
-		const insertDataStmt = await connection.prepare(
-			'INSERT INTO data (data_id, dataset_id, x, y, sort_order) VALUES ($dataId, $datasetId, $x, $y, $sortOrder)'
-		);
-
 		for (let i = 0; i < body.data.length; i++) {
 			const point = body.data[i];
-			insertDataStmt.bind(
-				{
-					dataId: nextDataId++,
-					datasetId: nextId,
-					x: point.x,
-					y: point.y,
-					sortOrder: point.sort_order || i + 1
-				},
-				{
-					dataId: INTEGER,
-					datasetId: INTEGER,
-					x: DOUBLE,
-					y: DOUBLE,
-					sortOrder: INTEGER
-				}
-			);
-			await insertDataStmt.run();
+			await sql`
+				INSERT INTO data (dataset_id, x, y, sort_order)
+				VALUES (
+					${datasetId},
+					${point.x},
+					${point.y},
+					${point.sort_order || i + 1}
+				)
+			`;
 		}
 
-		return json({ success: true, dataset_id: nextId }, { status: 201 });
+		return json({ success: true, dataset_id: datasetId }, { status: 201 });
 	} catch (error) {
 		console.error('Database error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });
-	} finally {
-		if (connection) connection.closeSync();
-		if (instance) instance.closeSync();
 	}
 };
 
@@ -244,45 +156,25 @@ export const DELETE: RequestHandler = async ({ url }) => {
 		return json({ error: 'ID must be a number' }, { status: 400 });
 	}
 
-	let instance;
-	let connection;
-
 	try {
-		instance = await DuckDBInstance.create(DB_PATH);
-		connection = await instance.connect();
-
 		// Check if dataset exists
-		const checkStmt = await connection.prepare(
-			'SELECT dataset_id FROM datasets_meta WHERE dataset_id = $datasetId'
-		);
-		checkStmt.bind({ datasetId }, { datasetId: INTEGER });
-		const checkResult = await checkStmt.run();
-		const checkRows = await checkResult.getRows();
+		const dataset = await sql`
+			SELECT dataset_id FROM datasets_meta WHERE dataset_id = ${datasetId}
+		`;
 
-		if (!checkRows || checkRows.length === 0) {
+		if (!dataset || dataset.length === 0) {
 			return json({ error: 'Dataset not found' }, { status: 404 });
 		}
 
-		// Delete data points
-		const deleteDataStmt = await connection.prepare(
-			'DELETE FROM data WHERE dataset_id = $datasetId'
-		);
-		deleteDataStmt.bind({ datasetId }, { datasetId: INTEGER });
-		await deleteDataStmt.run();
+		// Delete data points (CASCADE will handle this, but explicit is fine)
+		await sql`DELETE FROM data WHERE dataset_id = ${datasetId}`;
 
 		// Delete dataset metadata
-		const deleteMetaStmt = await connection.prepare(
-			'DELETE FROM datasets_meta WHERE dataset_id = $datasetId'
-		);
-		deleteMetaStmt.bind({ datasetId }, { datasetId: INTEGER });
-		await deleteMetaStmt.run();
+		await sql`DELETE FROM datasets_meta WHERE dataset_id = ${datasetId}`;
 
 		return json({ success: true, dataset_id: datasetId }, { status: 200 });
 	} catch (error) {
 		console.error('Database error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });
-	} finally {
-		if (connection) connection.closeSync();
-		if (instance) instance.closeSync();
 	}
 };
