@@ -1,12 +1,46 @@
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.svg';
 	import '../global.css';
 
 	let { children } = $props();
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+	<title>Open Datle - Daily Open Data Guessing Game</title>
+
+	<!-- Meta Tags -->
+	<meta
+		name="description"
+		content="Test your knowledge of NYC data! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real NYC Open Data."
+	/>
+	<meta
+		name="keywords"
+		content="NYC data game, data visualization, guessing game, New York City, open data, statistics game, daily puzzle"
+	/>
+	<meta name="author" content="Austin Steinhart" />
+
+	<!-- Open Graph / Facebook -->
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://open-datle.com/" />
+	<meta property="og:title" content="Open Datle - Daily Open Data Guessing Game" />
+	<meta
+		property="og:description"
+		content="Test your knowledge of NYC data! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real NYC Open Data."
+	/>
+	<meta property="og:image" content="https://open-datle.com/favicon.svg" />
+
+	<!-- Twitter -->
+	<meta property="twitter:card" content="summary_large_image" />
+	<meta property="twitter:url" content="https://open-datle.com/" />
+	<meta property="twitter:title" content="Open Datle - Daily Open Data Guessing Game" />
+	<meta
+		property="twitter:description"
+		content="Test your knowledge of NYC data! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real NYC Open Data."
+	/>
+	<meta property="twitter:image" content="https://open-datle.com/favicon.svg" />
+
+	<!-- Viewport -->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </svelte:head>
 
 {@render children()}

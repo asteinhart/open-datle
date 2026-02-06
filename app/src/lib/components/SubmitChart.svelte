@@ -277,6 +277,55 @@
 		font-size: 1rem;
 		color: #333;
 		border: 2px solid #333;
+		flex-shrink: 0;
+	}
+
+	@media (max-width: 768px) {
+		.submit-container {
+			margin-top: 0.3rem;
+		}
+		.feedback {
+			width: 90%;
+			padding: 0.75rem;
+			font-size: 0.9rem;
+		}
+
+		.box {
+			width: 25px;
+			height: 25px;
+			font-size: 0.9rem;
+		}
+
+		button {
+			padding: 0.4rem 1rem;
+			font-size: 0.9rem;
+		}
+
+		.try-again-btn {
+			padding: 0.25rem 0.8rem;
+			font-size: 0.9rem;
+		}
+	}
+
+	@media (max-width: 400px) {
+		button {
+			padding: 0.3rem 0.5rem;
+			font-size: 0.85rem;
+		}
+		.submit-btn,
+		.give-up-btn {
+			padding: 0.3rem 1rem;
+			font-size: 1rem;
+		}
+
+		.try-again-btn {
+			padding: 0.2rem 0.6rem;
+			font-size: 0.6rem;
+		}
+
+		.button-group {
+			gap: 0.5rem;
+		}
 	}
 
 	.link {

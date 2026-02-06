@@ -19,10 +19,16 @@
 
 	let svg: any;
 	let containerWidth = $state(width);
+
+	// Responsive height based on container width
+	let chartHeight = $derived(
+		containerWidth < 500 ? 250 : containerWidth < 768 ? 350 : containerWidth < 1024 ? 380 : 400
+	);
+
 	const margin = $derived(
-		containerWidth < 500
-			? { top: 20, right: 40, bottom: 20, left: 30 }
-			: { top: 40, right: 70, bottom: 40, left: 50 }
+		containerWidth < 600
+			? { top: 20, right: 50, bottom: 20, left: 30 }
+			: { top: 40, right: 80, bottom: 40, left: 50 }
 	);
 
 	const formatter = new Intl.NumberFormat('en', {
@@ -135,7 +141,7 @@
 		if (!svg) return;
 
 		const chartWidth = containerWidth - margin.left - margin.right;
-		const chartHeight = height - margin.top - margin.bottom;
+		const innerChartHeight = chartHeight - margin.top - margin.bottom;
 
 		// Get position relative to SVG
 		const rect = svg.getBoundingClientRect();
@@ -152,13 +158,13 @@
 		const mouseY = clientY - rect.top - margin.top;
 
 		// Check if mouse is within chart bounds
-		if (mouseX < 0 || mouseX > chartWidth || mouseY < 0 || mouseY > chartHeight) {
+		if (mouseX < 0 || mouseX > chartWidth || mouseY < 0 || mouseY > innerChartHeight) {
 			return;
 		}
 
 		// Create scales
 		const xScale = d3.scaleTime().domain(xDomain).range([0, chartWidth]);
-		const yScale = d3.scaleLinear().domain(yDomain).range([chartHeight, 0]);
+		const yScale = d3.scaleLinear().domain(yDomain).range([innerChartHeight, 0]);
 
 		// Convert mouse position to data coordinates
 		const dataX = xScale.invert(mouseX);
@@ -217,13 +223,13 @@
 		d3.select(svg).selectAll(':not(.missing-g)').remove();
 
 		const chartWidth = containerWidth - margin.left - margin.right;
-		const chartHeight = height - margin.top - margin.bottom;
+		const innerChartHeight = chartHeight - margin.top - margin.bottom;
 
 		// Create SVG container
 		const g = d3
 			.select(svg)
 			.attr('width', containerWidth)
-			.attr('height', height)
+			.attr('height', chartHeight)
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`)
 			.attr('id', 'g-chart');
@@ -231,7 +237,7 @@
 		// Create scales
 		const xScale = d3.scaleTime().domain(xDomain).range([0, chartWidth]);
 
-		const yScale = d3.scaleLinear().domain(yDomain).range([chartHeight, 0]);
+		const yScale = d3.scaleLinear().domain(yDomain).range([innerChartHeight, 0]);
 
 		// Create line generator
 		const line = d3
@@ -247,23 +253,23 @@
 			.curve(d3.curveMonotoneX); // Smooth spline curve
 
 		const yTickSpacing = containerWidth < 500 ? 100 : 125; // Pixels between ticks
-		const xTickSpacing = containerWidth < 500 ? 40 : 50; // Pixels between ticks
+		const xTickSpacing = containerWidth < 500 ? 80 : 70; // Pixels between ticks
 
 		const yTickCount = Math.floor(width / yTickSpacing);
 		// include Y min and max in ticks
 		const yTicks = yScale.ticks(yTickCount);
 		// if (!yTicks.includes(yDomain[1])) yTicks.push(yDomain[1]);
 
-		let xtickCount = Math.floor(height / xTickSpacing);
+		let xtickCount = Math.floor(chartWidth / xTickSpacing);
 		// include Y min and max in ticks
 		const xTicks = xScale.ticks(xtickCount);
 		// remove first tick to avoid overlap
-		xTicks.shift();
+		//xTicks.shift();
 
 		// Add X axis
 		const xAxis = g
 			.append('g')
-			.attr('transform', `translate(0,${chartHeight})`)
+			.attr('transform', `translate(0,${innerChartHeight})`)
 			.call(d3.axisBottom(xScale).tickValues(xTicks).tickSize(0).tickPadding(10));
 
 		// Increase X axis font size
@@ -313,11 +319,11 @@
 		// Add vertical grid lines
 		g.append('g')
 			.attr('class', 'grid')
-			.attr('transform', `translate(0,${chartHeight})`)
+			.attr('transform', `translate(0,${innerChartHeight})`)
 			.call(
 				d3
 					.axisBottom(xScale)
-					.tickSize(-chartHeight)
+					.tickSize(-innerChartHeight)
 					.tickFormat(() => '')
 			)
 			.selectAll('line')
@@ -510,7 +516,7 @@
 				.attr('x1', (d) => margin.left + xScale(d.x))
 				.attr('x2', (d) => margin.left + xScale(d.x))
 				.attr('y1', margin.top)
-				.attr('y2', margin.top + chartHeight)
+				.attr('y2', margin.top + innerChartHeight)
 				.attr('stroke', 'black')
 				.attr('stroke-width', 2)
 				.attr('opacity', 0);
@@ -629,6 +635,7 @@
 	@media (max-width: 768px) {
 		.chart-container {
 			padding: 0.5rem;
+			width: 100%;
 		}
 		.chart-title {
 			font-size: 1.2rem;

@@ -196,7 +196,7 @@
 		font-family: 'Hanken Grotesk', sans-serif;
 	}
 	.order-container {
-		max-width: 800px;
+		max-width: 600px;
 		margin: 0 auto 1rem;
 		padding: 1rem;
 		border-radius: 4px;
@@ -400,6 +400,23 @@
 
 	.borough-box:active {
 		cursor: grabbing;
+	}
+
+	@media (max-width: 1024px) {
+		.order-container {
+			max-width: none;
+			padding: 1rem 1.5rem;
+		}
+	}
+
+	@media (max-width: 768px) {
+		.order-container {
+			padding: 0.75rem;
+		}
+
+		.row {
+			gap: 1rem;
+		}
 	}
 
 	@media (max-width: 400px) {

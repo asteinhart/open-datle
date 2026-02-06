@@ -139,6 +139,7 @@
 	{#if feedback}
 		<div class="feedback">
 			{feedback}
+
 			{#if gameState !== 'playing'}
 				{@render datasetInfo()}
 				<button class="try-again-btn" onclick={handleTryAgain}>Try Again</button>
@@ -290,5 +291,44 @@
 	.try-again-btn:hover {
 		background-color: steelblue;
 		color: white;
+	}
+
+	@media (max-width: 768px) {
+		.feedback {
+			padding: 0.75rem;
+			font-size: 0.9rem;
+		}
+
+		.box {
+			width: 25px;
+			height: 25px;
+			font-size: 0.9rem;
+		}
+
+		button {
+			padding: 0.4rem 1rem;
+			font-size: 0.9rem;
+		}
+
+		.try-again-btn {
+			padding: 0.25rem 0.8rem;
+			font-size: 0.9rem;
+		}
+	}
+
+	@media (max-width: 400px) {
+		button {
+			padding: 0.3rem 0.8rem;
+			font-size: 0.85rem;
+		}
+
+		.try-again-btn {
+			padding: 0.2rem 0.6rem;
+			font-size: 0.85rem;
+		}
+
+		.button-group {
+			gap: 0.5rem;
+		}
 	}
 </style>

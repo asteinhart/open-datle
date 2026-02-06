@@ -60,7 +60,7 @@
 
 	.logo {
 		flex-shrink: 0;
-		margin-right: -0.35rem;
+		margin-right: -0.3rem;
 		margin-bottom: 0.35rem;
 	}
 

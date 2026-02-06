@@ -80,9 +80,10 @@
 	@media (max-width: 768px) {
 		.instructions-box {
 			width: calc(100% - 2rem);
-			margin: 0.5rem 1rem 0 1rem;
+			margin: 0.5rem auto 0 auto;
 			border-radius: 4px;
 			padding: 0.5rem;
+			max-width: 600px;
 		}
 
 		h2 {
