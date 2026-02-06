@@ -27,6 +27,10 @@
 	let availableBoroughs: string[] = $state([...boroughs]);
 	let draggedItem: string | null = $state(null);
 	let draggedFromSlot: number | null = $state(null);
+	let isTouchDragging = $state(false);
+	let touchDraggedElement: HTMLElement | null = $state(null);
+	let touchStartX = $state(0);
+	let touchStartY = $state(0);
 
 	$inspect('slots', slots);
 
@@ -94,13 +98,50 @@
 		draggedFromSlot = null;
 	}
 
-	function handleDropOnAvailable() {
-		if (draggedItem === null || draggedFromSlot === null) return;
+	function handleTouchStart(event: TouchEvent, borough: string, fromSlot: number | null = null) {
+		event.preventDefault();
+		draggedItem = borough;
+		draggedFromSlot = fromSlot;
+		isTouchDragging = true;
+		touchDraggedElement = event.target as HTMLElement;
+		const touch = event.touches[0];
+		touchStartX = touch.clientX;
+		touchStartY = touch.clientY;
+		touchDraggedElement.classList.add('dragging');
+	}
 
-		// Remove from slot and add back to available
-		slots[draggedFromSlot] = null;
-		availableBoroughs = [...availableBoroughs, draggedItem];
+	function handleTouchMove(event: TouchEvent) {
+		if (!isTouchDragging || !touchDraggedElement) return;
+		event.preventDefault();
+		const touch = event.touches[0];
+		const deltaX = touch.clientX - touchStartX;
+		const deltaY = touch.clientY - touchStartY;
+		touchDraggedElement.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+	}
 
+	function handleTouchEnd(event: TouchEvent) {
+		if (!isTouchDragging) return;
+		event.preventDefault();
+		if (touchDraggedElement) {
+			touchDraggedElement.classList.remove('dragging');
+			touchDraggedElement.style.transform = '';
+		}
+		const touch = event.changedTouches[0];
+		const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+		if (elementAtPoint) {
+			const slotElement = elementAtPoint.closest('.slot');
+			if (slotElement) {
+				const allSlots = Array.from(slotElement.parentElement?.querySelectorAll('.slot') || []);
+				const slotIndex = allSlots.indexOf(slotElement);
+				if (slotIndex !== -1) {
+					handleDropOnSlot(slotIndex);
+				}
+			} else {
+				handleDropOnAvailable();
+			}
+		}
+		isTouchDragging = false;
+		touchDraggedElement = null;
 		draggedItem = null;
 		draggedFromSlot = null;
 	}
@@ -135,6 +176,9 @@
 								class:correct-bg={correctSlots.has(index) && !reveal}
 								draggable={!correctSlots.has(index)}
 								ondragstart={() => handleDragStart(slot, index)}
+								ontouchstart={(e) => handleTouchStart(e, slot, index)}
+								ontouchmove={handleTouchMove}
+								ontouchend={handleTouchEnd}
 								style="{!(incorrectSlots.has(index) && !reveal) &&
 								!(correctSlots.has(index) && !reveal)
 									? `border-color: ${boroughColors[slot]};`
@@ -159,6 +203,9 @@
 								class="borough-box"
 								draggable="true"
 								ondragstart={() => handleDragStart(availableBoroughs[index])}
+								ontouchstart={(e) => handleTouchStart(e, availableBoroughs[index])}
+								ontouchmove={handleTouchMove}
+								ontouchend={handleTouchEnd}
 								style="border-color: {boroughColors[availableBoroughs[index]]};"
 							>
 								{availableBoroughs[index]}
@@ -306,6 +353,7 @@
 		justify-content: center;
 		box-sizing: border-box;
 		font-weight: 550;
+		touch-action: none;
 	}
 
 	.borough-box.placed {
@@ -400,6 +448,12 @@
 
 	.borough-box:active {
 		cursor: grabbing;
+	}
+
+	.dragging {
+		z-index: 1000;
+		position: relative;
+		pointer-events: none;
 	}
 
 	@media (max-width: 1024px) {

@@ -232,6 +232,9 @@
 	}
 
 	button {
+		-webkit-appearance: none; /* Remove Safari's default button styling */
+		-moz-appearance: none; /* Remove Firefox's default button styling */
+		appearance: none; /* Remove default button styling for other browsers */
 		padding: 0.5rem 1.5rem;
 		border: none;
 		border-radius: 8px;
