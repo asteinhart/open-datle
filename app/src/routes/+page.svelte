@@ -28,9 +28,9 @@
 	let reveal: boolean = $state(false);
 	let loading: boolean = $state(true);
 
-	// Get dataset ID from URL parameter, or use today's dataset from server, or default to 1
+	// Get dataset ID from URL parameter, or use today's dataset from server, or default to 6
 	let dataset_id: number = $derived(
-		parseInt(page.url.searchParams.get('id') || '') || serverData?.todayDatasetId || 1
+		parseInt(page.url.searchParams.get('id') || '') || serverData?.todayDatasetId || 6
 	);
 
 	// admin mode
