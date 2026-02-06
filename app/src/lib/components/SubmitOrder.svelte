@@ -23,6 +23,8 @@
 	let maxGuesses = 3;
 	let feedback = $state('');
 	let gameState = $state<GameStateType>('playing');
+	let datasetLink = $derived(data.source);
+	let nycOpenDataLink = 'https://opendata.cityofnewyork.us/';
 
 	function checkOrderScore(
 		slots: (string | null)[],
@@ -104,6 +106,13 @@
 	}
 </script>
 
+{#snippet datasetInfo()}
+	<br /> <br />
+	This data is from the dataset from NYC Open Data.
+	<a class="link" href={datasetLink} target="_blank">Access the data</a> or learn more about
+	<a class="link" href={nycOpenDataLink} target="_blank">NYC Open Data</a>.
+{/snippet}
+
 <div class="submit-container">
 	{#if gameState === 'playing'}
 		<div class="guess-indicators">
@@ -118,7 +127,7 @@
 	{/if}
 
 	{#if feedback}
-		<div class="feedback">{feedback}</div>
+		<div class="feedback">{feedback} {@render datasetInfo()}</div>
 	{/if}
 
 	{#if gameState === 'playing'}
@@ -175,9 +184,18 @@
 		padding: 1rem;
 		background-color: #f0f0f0;
 		border-radius: 8px;
-		text-align: center;
 		font-size: 1rem;
 		color: #333;
+	}
+
+	.link {
+		color: steelblue;
+		text-decoration: none;
+		font-weight: bold;
+	}
+
+	.link:hover {
+		text-decoration: underline;
 	}
 
 	.button-group {

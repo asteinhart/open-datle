@@ -14,7 +14,7 @@
 		guess: UserLine;
 	}>();
 
-	type GameStateType = 'playing' | 'won' | 'lost';
+	type GameStateType = 'playing' | 'won' | 'lost' | 'gave-up';
 
 	let numGuesses = $state(1);
 	let maxGuesses = 3;
@@ -22,6 +22,9 @@
 	let gameState = $state<GameStateType>('playing');
 	let accuracyText = $state('');
 	let accuracyClass = $state('');
+
+	let datasetLink = $derived(data.source);
+	let nycOpenDataLink = 'https://opendata.cityofnewyork.us/';
 
 	function guessScore(guess: UserLine, data: DataSet): { status: string; percentage: number } {
 		// Check if 75% of segments are good and no segment is under ok
@@ -133,7 +136,20 @@
 	function handleSubmit() {
 		updateGameState();
 	}
+
+	function handleGiveUp() {
+		gameState = 'gave-up';
+		feedback = 'You gave up.';
+		$revealAnswer = true;
+		$currentGuess = { points: [] };
+	}
 </script>
+
+{#snippet datasetInfo()}
+	This data is from the dataset from NYC Open Data.
+	<a class="link" href={datasetLink} target="_blank">Access the data</a> or learn more about
+	<a class="link" href={nycOpenDataLink} target="_blank">NYC Open Data</a>.
+{/snippet}
 
 <div class="submit-container">
 	{#if gameState === 'playing'}
@@ -153,21 +169,24 @@
 			{#if gameState === 'won'}
 				{feedback} <span class="accuracy {accuracyClass}">{accuracyText} correct</span> and very
 				close to the actual line.
-				<br />
+				<br /><br />
 				<div class="dataset-info">
-					<p>
-						This data is from the dataset <strong>{data.title}</strong> from NYC Open Data.
-						<a href={data.source} target="_blank">Learn more about it here</a>.
-					</p>
-					<p>
-						<a href="https://opendata.cityofnewyork.us/" target="_blank"
-							>Learn more about NYC Open Data here</a
-						>.
-					</p>
+					{@render datasetInfo()}
 				</div>
 			{:else if gameState === 'lost'}
 				{feedback} <span class="accuracy {accuracyClass}">{accuracyText} correct</span>. The correct
 				answer is now revealed.
+
+				<br /><br />
+				<div class="dataset-info">
+					{@render datasetInfo()}
+				</div>
+			{:else if gameState === 'gave-up'}
+				{feedback} The correct answer is now revealed.
+				<br /><br />
+				<div class="dataset-info">
+					{@render datasetInfo()}
+				</div>
 			{:else}
 				{feedback} <span class="accuracy {accuracyClass}">{accuracyText} correct</span>. Try again.
 			{/if}
@@ -187,7 +206,7 @@
 					Lost
 				{/if}
 			</button>
-			<button class="give-up-btn">Give Up</button>
+			<button class="give-up-btn" onclick={handleGiveUp}>Give Up</button>
 		</div>
 	{/if}
 </div>
@@ -233,6 +252,16 @@
 		font-size: 1rem;
 		color: #333;
 		border: 2px solid #333;
+	}
+
+	.link {
+		color: steelblue;
+		text-decoration: none;
+		font-weight: bold;
+	}
+
+	.link:hover {
+		text-decoration: underline;
 	}
 
 	.accuracy {
