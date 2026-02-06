@@ -126,6 +126,7 @@
 		border: 2px solid #ddd;
 		margin-bottom: 4rem;
 		border-radius: 8px;
+		box-sizing: border-box;
 	}
 
 	.button-group {
@@ -145,9 +146,15 @@
 
 	@media (max-width: 768px) {
 		.chart-wrapper {
-			margin: 0.5rem auto;
-			margin-bottom: 2rem;
+			width: calc(100% - 2rem);
+			margin: 0.5rem 1rem 2rem 1rem;
 			border-radius: 4px;
+		}
+	}
+
+	@media (max-width: 360px) {
+		.borough-box.placed .slot-number {
+			font-size: small;
 		}
 	}
 </style>

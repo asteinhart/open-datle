@@ -623,6 +623,7 @@
 		user-select: none;
 		display: block;
 		cursor: pointer;
+		touch-action: none;
 	}
 
 	@media (max-width: 768px) {

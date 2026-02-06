@@ -116,7 +116,7 @@
 	<div class="main-container">
 		<div class="slots-container">
 			{#each slots as slot, index}
-				<div class="row">
+				<div class="row" class:centered={reveal}>
 					<div
 						class="slot {slot !== null ? 'filled' : ''}"
 						ondragover={handleDragOver}
@@ -128,17 +128,17 @@
 						{#if slot !== null}
 							<div
 								class="borough-box placed"
-								class:revealed={correctSlots.has(index) || reveal}
+								class:revealed={reveal}
 								class:dark-text={['Brooklyn', 'The Bronx'].includes(slot)}
 								class:light-bg={['Staten Island', 'Manhattan', 'Queens'].includes(slot)}
 								class:incorrect-bg={incorrectSlots.has(index) && !reveal}
+								class:correct-bg={correctSlots.has(index) && !reveal}
 								draggable={!correctSlots.has(index)}
 								ondragstart={() => handleDragStart(slot, index)}
-								style="{!(incorrectSlots.has(index) && !reveal)
+								style="{!(incorrectSlots.has(index) && !reveal) &&
+								!(correctSlots.has(index) && !reveal)
 									? `border-color: ${boroughColors[slot]};`
-									: ''} {correctSlots.has(index) || reveal
-									? `background-color: ${boroughColors[slot]};`
-									: ''}"
+									: ''} {reveal ? `background-color: ${boroughColors[slot]};` : ''}"
 							>
 								<div class="left-content">
 									<span class="slot-number">{index + 1}</span>
@@ -229,6 +229,20 @@
 		display: flex;
 		gap: 2rem;
 	}
+
+	.row.centered {
+		justify-content: center;
+	}
+
+	.row.centered .slot {
+		flex: none;
+		width: 400px;
+	}
+
+	.row.centered .option-slot {
+		display: none;
+	}
+
 	.slot {
 		border: 2px dashed #999;
 		border-radius: 8px;
@@ -346,6 +360,11 @@
 		border-color: rgb(130, 0, 0);
 	}
 
+	.borough-box.placed.correct-bg {
+		background-color: #d4edda;
+		border-color: #28a745;
+	}
+
 	.borough-box.placed.revealed .slot-number {
 		color: white !important;
 	}
@@ -381,5 +400,62 @@
 
 	.borough-box:active {
 		cursor: grabbing;
+	}
+
+	@media (max-width: 400px) {
+		.rank {
+			font-size: 0.9rem;
+			padding-block: 0.5px;
+		}
+
+		.title {
+			font-size: 1.3rem;
+			margin-bottom: 0.3rem;
+		}
+
+		.subtitle {
+			font-size: 0.9rem;
+			margin-bottom: 1rem;
+		}
+
+		.order-container {
+			padding: 0.5rem;
+		}
+
+		.slots-container {
+			gap: 0.5rem;
+		}
+
+		.borough-box {
+			border-width: 2px;
+			font-size: 1rem;
+			padding: 0 0.5rem;
+			height: 50px;
+		}
+
+		.borough-box.placed {
+			padding: 0 0.8rem;
+			font-size: 1rem;
+		}
+
+		.borough-box.placed .slot-number {
+			font-size: 1rem;
+		}
+
+		.borough-box.placed .right-content {
+			font-size: 1rem;
+		}
+
+		.slot-number {
+			font-size: 1rem;
+		}
+
+		.slot {
+			height: 50px;
+		}
+
+		.option-slot {
+			height: 50px;
+		}
 	}
 </style>

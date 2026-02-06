@@ -104,6 +104,16 @@
 		feedback = 'You gave up. The correct answer is now revealed.';
 		$revealAnswer = true;
 	}
+
+	function handleTryAgain() {
+		gameState = 'playing';
+		numGuesses = 1;
+		feedback = '';
+		$revealAnswer = false;
+		correctSlots.clear();
+		incorrectSlots.clear();
+		slots = slots.map(() => null);
+	}
 </script>
 
 {#snippet datasetInfo()}
@@ -115,19 +125,25 @@
 
 <div class="submit-container">
 	{#if gameState === 'playing'}
-		<div class="guess-indicators">
-			{#each Array(maxGuesses) as _, index}
-				<div
-					class="dot"
-					class:active={index < numGuesses}
-					class:current={index === numGuesses - 1}
-				></div>
-			{/each}
+		<div class="guesses">
+			<div class="boxes">
+				{#each Array(maxGuesses) as _, index}
+					<div class="box" class:filled={index < numGuesses}>
+						{index + 1}
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
 
 	{#if feedback}
-		<div class="feedback">{feedback} {@render datasetInfo()}</div>
+		<div class="feedback">
+			{feedback}
+			{#if gameState !== 'playing'}
+				{@render datasetInfo()}
+				<button class="try-again-btn" onclick={handleTryAgain}>Try Again</button>
+			{/if}
+		</div>
 	{/if}
 
 	{#if gameState === 'playing'}
@@ -158,26 +174,37 @@
 		align-items: center;
 	}
 
-	.guess-indicators {
+	.guesses {
 		display: flex;
 		gap: 0.5rem;
-		margin-bottom: 0.5rem;
+		align-items: center;
+		flex-direction: column;
 	}
 
-	.dot {
-		width: 12px;
-		height: 12px;
-		border-radius: 50%;
-		background-color: #ddd;
-		transition: background-color 0.3s;
+	.boxes {
+		display: flex;
+		gap: 0.5rem;
 	}
 
-	.dot.active {
+	.box {
+		width: 30px;
+		height: 30px;
+		border: 2px solid #ddd;
+		border-radius: 4px;
+		background-color: white;
+		transition: all 0.3s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: bold;
+		font-size: 1rem;
+		color: #000;
+	}
+
+	.box.filled {
 		background-color: steelblue;
-	}
-
-	.dot.current {
-		background-color: steelblue;
+		border-color: steelblue;
+		color: white;
 	}
 
 	.feedback {
@@ -246,6 +273,22 @@
 
 	.give-up-btn:hover {
 		background-color: #b32303;
+		color: white;
+	}
+
+	.try-again-btn {
+		margin-top: 1rem;
+		border: solid 3px steelblue;
+		background-color: white;
+		font-weight: bold;
+		color: steelblue;
+		margin-inline: auto;
+		display: block;
+		padding: 0.3rem 1rem;
+	}
+
+	.try-again-btn:hover {
+		background-color: steelblue;
 		color: white;
 	}
 </style>

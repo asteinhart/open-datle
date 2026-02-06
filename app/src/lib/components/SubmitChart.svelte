@@ -143,6 +143,17 @@
 		$revealAnswer = true;
 		$currentGuess = { points: [] };
 	}
+
+	function handleTryAgain() {
+		gameState = 'playing';
+		numGuesses = 1;
+		feedback = '';
+		$revealAnswer = false;
+		$currentGuess = { points: [] };
+		$guesses = [];
+		score.set('');
+		lastScorePercentage.set(0);
+	}
 </script>
 
 {#snippet datasetInfo()}
@@ -153,14 +164,14 @@
 
 <div class="submit-container">
 	{#if gameState === 'playing'}
-		<div class="guess-indicators">
-			{#each Array(maxGuesses) as _, index}
-				<div
-					class="dot"
-					class:active={index < numGuesses}
-					class:current={index === numGuesses - 1}
-				></div>
-			{/each}
+		<div class="guesses">
+			<div class="boxes">
+				{#each Array(maxGuesses) as _, index}
+					<div class="box" class:filled={index < numGuesses}>
+						{index + 1}
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
 
@@ -173,6 +184,7 @@
 				<div class="dataset-info">
 					{@render datasetInfo()}
 				</div>
+				<button class="try-again-btn" onclick={handleTryAgain}>Try Again</button>
 			{:else if gameState === 'lost'}
 				{feedback} <span class="accuracy {accuracyClass}">{accuracyText} correct</span>. The correct
 				answer is now revealed.
@@ -181,12 +193,14 @@
 				<div class="dataset-info">
 					{@render datasetInfo()}
 				</div>
+				<button class="try-again-btn" onclick={handleTryAgain}>Try Again</button>
 			{:else if gameState === 'gave-up'}
 				{feedback} The correct answer is now revealed.
 				<br /><br />
 				<div class="dataset-info">
 					{@render datasetInfo()}
 				</div>
+				<button class="try-again-btn" onclick={handleTryAgain}>Try Again</button>
 			{:else}
 				{feedback} <span class="accuracy {accuracyClass}">{accuracyText} correct</span>. Try again.
 			{/if}
@@ -221,26 +235,37 @@
 		align-items: center;
 	}
 
-	.guess-indicators {
+	.guesses {
 		display: flex;
 		gap: 0.5rem;
-		margin-bottom: 0.5rem;
+		align-items: center;
+		flex-direction: column;
 	}
 
-	.dot {
-		width: 12px;
-		height: 12px;
-		border-radius: 50%;
-		background-color: #ddd;
-		transition: background-color 0.3s;
+	.boxes {
+		display: flex;
+		gap: 0.5rem;
 	}
 
-	.dot.active {
-		background-color: #4caf50;
+	.box {
+		width: 30px;
+		height: 30px;
+		border: 2px solid #ddd;
+		border-radius: 4px;
+		background-color: white;
+		transition: all 0.3s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: bold;
+		font-size: 1rem;
+		color: #000;
 	}
 
-	.dot.current {
+	.box.filled {
 		background-color: steelblue;
+		border-color: steelblue;
+		color: white;
 	}
 
 	.feedback {
@@ -334,6 +359,22 @@
 
 	.give-up-btn:hover {
 		background-color: #b32303;
+		color: white;
+	}
+
+	.try-again-btn {
+		margin-top: 1rem;
+		border: solid 3px steelblue;
+		background-color: white;
+		font-weight: bold;
+		color: steelblue;
+		margin-inline: auto;
+		display: block;
+		padding: 0.3rem 1rem;
+	}
+
+	.try-again-btn:hover {
+		background-color: steelblue;
 		color: white;
 	}
 </style>
