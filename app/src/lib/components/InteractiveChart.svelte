@@ -362,30 +362,73 @@
 
 		// Add the line and data points only if reveal is true
 		if (reveal) {
-			// Add the line
-			g.append('path')
-				.datum(processedData)
-				.attr('fill', 'none')
-				.attr('stroke', 'steelblue')
-				.attr('stroke-width', 3.5)
-				.attr('d', line);
+			// First, add all dots with opacity 0 (so they're behind but ready)
+			const dots = [];
+			for (let i = 0; i < processedData.length; i++) {
+				const dot = g.append('circle')
+					.attr('class', 'dot')
+					.attr('cx', xScale(processedData[i].x))
+					.attr('cy', yScale(processedData[i].y))
+					.attr('r', 5)
+					.attr('fill', 'steelblue')
+					.attr('opacity', 0)
+					.on('mouseover', (event, d) => showTooltip(event, processedData[i]))
+					.on('mousemove', (event, d) => showTooltip(event, processedData[i]))
+					.on('mouseout', hideTooltip);
+				dots.push(dot);
+			}
 
-			// Add data points
-			g.selectAll('.dot')
+			// Then animate drawing the line segment by segment and fade in dots in sync
+			for (let i = 0; i < processedData.length - 1; i++) {
+				const segment = [processedData[i], processedData[i + 1]];
+				const segmentPath = g.append('path')
+					.datum(segment)
+					.attr('fill', 'none')
+					.attr('stroke', 'steelblue')
+					.attr('stroke-width', 3.5)
+					.attr('d', line);
+
+				const length = segmentPath.node().getTotalLength();
+				segmentPath
+					.attr('stroke-dasharray', length)
+					.attr('stroke-dashoffset', length)
+					.transition()
+					.delay(i * 400) // 400ms delay per segment
+					.duration(700) // 700ms to draw each segment
+					.attr('stroke-dashoffset', 0);
+
+				// Fade in dots when their segment starts
+				if (i === 0) {
+					// First dot at start
+					dots[0].transition()
+						.delay(0)
+						.duration(500)
+						.attr('opacity', 1);
+				}
+				// End dot of segment at start of segment
+				dots[i + 1].transition()
+					.delay(i * 400)
+					.duration(500)
+					.attr('opacity', 1);
+			}
+
+			// Add Voronoi-based tooltips for better hover experience
+			const delaunay = d3.Delaunay.from(processedData.map(d => [xScale(d.x), yScale(d.y)]));
+			const voronoi = delaunay.voronoi([0, 0, chartWidth, innerChartHeight]);
+
+			// Add Voronoi cells for tooltips
+			g.selectAll('.voronoi')
 				.data(processedData)
 				.enter()
-				.append('circle')
-				.attr('class', 'dot')
-				.attr('cx', (d) => xScale(d.x))
-				.attr('cy', (d) => yScale(d.y))
-				.attr('r', 5)
-				.attr('fill', 'steelblue')
+				.append('path')
+				.attr('class', 'voronoi')
+				.attr('d', (d, i) => voronoi.renderCell(i))
+				.attr('fill', 'none')
+				.attr('pointer-events', 'all')
 				.on('mouseover', (event, d) => showTooltip(event, d))
 				.on('mousemove', (event, d) => showTooltip(event, d))
 				.on('mouseout', hideTooltip);
 		}
-
-		// Add user-drawn line if there are user points
 		if ($currentGuess.points && $currentGuess.points.length > 0) {
 			// Create a set of user x values for quick lookup
 			const userXSet = new Set(
@@ -509,7 +552,7 @@
 								.attr('fill', 'none')
 								.attr('stroke', colorScale(adjustedError))
 								.attr('stroke-width', 4)
-								.attr('stroke-opacity', reveal ? 0.3 : 0.8)
+								.attr('stroke-opacity', reveal ? 0.2 : 0.8)
 								.attr('d', lineGenerator);
 						}
 					}
@@ -585,7 +628,7 @@
 		</div>
 	</div>
 
-	{#if $guesses && $guesses.length > 0}
+	{#if $guesses && $guesses.length > 0 && !reveal}
 		<div class="legend">
 			<div class="legend-label">Further</div>
 			<div class="legend-gradient"></div>
