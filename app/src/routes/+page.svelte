@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
-	import Footer from '$lib/components/Footer.svelte';
 	import Instructions from '$lib/components/Instructions.svelte';
 	import InteractiveChart from '$lib/components/InteractiveChart.svelte';
 	import InteractiveOrder from '$lib/components/InteractiveOrder.svelte';

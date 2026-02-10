@@ -218,6 +218,11 @@
 			.attr('transform', `translate(${margin.left},${margin.top})`)
 			.attr('id', 'g-chart');
 
+		const defs = g.append('defs');
+
+		// Create color scale for accuracy: red (inaccurate/bad) to green (accurate/good)
+		const colorScale = (error: number) => d3.interpolateRdYlGn(1 - error);
+
 		// Create scales
 		const xScale = d3.scaleTime().domain(xDomain).range([0, chartWidth]);
 
@@ -432,47 +437,80 @@
 				.attr('fill', 'steelblue');
 		}
 
-		// Draw previous guesses from store with colored segments
+		// Draw previous guesses from store
 		if ($guesses && $guesses.length > 0) {
-			const yRange = yDomain[1] - yDomain[0];
-			const threshold1 = 0.2 * yRange;
-			const threshold2 = 0.4 * yRange;
-
 			$guesses.forEach((guess, index) => {
-				const isMostRecent = index === $guesses.length - 1;
 				if (guess.points && guess.points.length > 0) {
-					// Draw segments between consecutive data points that both have guess points
+					// Sort guess points by x coordinate
+					const sortedGuessPoints = [...guess.points].sort((a, b) => {
+						const aTime = typeof a.x === 'number' ? a.x : a.x.getTime();
+						const bTime = typeof b.x === 'number' ? b.x : b.x.getTime();
+						return aTime - bTime;
+					});
+
+					// Calculate errors per segment
+					const segmentErrors = [];
 					for (let i = 0; i < processedData.length - 1; i++) {
 						const point1 = processedData[i];
 						const point2 = processedData[i + 1];
 						const point1X = typeof point1.x === 'number' ? point1.x : point1.x.getTime();
 						const point2X = typeof point2.x === 'number' ? point2.x : point2.x.getTime();
 
-						const guessPoint1 = guess.points.find(
+						const guessPoint1 = sortedGuessPoints.find(
 							(p) => (typeof p.x === 'number' ? p.x : p.x.getTime()) === point1X
 						);
-						const guessPoint2 = guess.points.find(
+						const guessPoint2 = sortedGuessPoints.find(
 							(p) => (typeof p.x === 'number' ? p.x : p.x.getTime()) === point2X
 						);
 
 						if (guessPoint1 && guessPoint2) {
 							const error = Math.abs(guessPoint1.y - point1.y) + Math.abs(guessPoint2.y - point2.y);
-							const color =
-								error < threshold1
-									? '#3bb273' // green (saturated, bright)
-									: error < threshold2
-										? '#ffb347' // orange (saturated, bright)
-										: '#e74c3c'; // red (saturated, bright)
-							const opacity = reveal ? 0.2 : isMostRecent ? 0.8 : 0.2;
+							// Calculate maximum possible error for this segment based on distance to axis bounds
+							const maxError1 = Math.max(point1.y - yDomain[0], yDomain[1] - point1.y);
+							const maxError2 = Math.max(point2.y - yDomain[0], yDomain[1] - point2.y);
+							const maxError = maxError1 + maxError2;
+							const normalizedError = maxError > 0 ? Math.min(1, error / maxError) : 0;
+							// Add cutoff and compress green area for more definition close to correct
+							const threshold = 0.7;
+							const adjustedError = normalizedError <= threshold ? Math.pow(normalizedError / threshold, 0.7) * threshold : 1;
+							segmentErrors.push(adjustedError);
+						} else {
+							segmentErrors.push(null); // No segment if points missing
+						}
+					}
 
+					// Draw each segment with color based on accuracy
+					for (let i = 0; i < processedData.length - 1; i++) {
+						const point1 = processedData[i];
+						const point2 = processedData[i + 1];
+						const point1X = typeof point1.x === 'number' ? point1.x : point1.x.getTime();
+						const point2X = typeof point2.x === 'number' ? point2.x : point2.x.getTime();
+
+						const guessPoint1 = sortedGuessPoints.find(
+							(p) => (typeof p.x === 'number' ? p.x : p.x.getTime()) === point1X
+						);
+						const guessPoint2 = sortedGuessPoints.find(
+							(p) => (typeof p.x === 'number' ? p.x : p.x.getTime()) === point2X
+						);
+
+						if (guessPoint1 && guessPoint2 && segmentErrors[i] !== null) {
+							const adjustedError = segmentErrors[i];
 							const segment = [guessPoint1, guessPoint2];
+
+							// Create line generator for this segment
+							const lineGenerator = d3.line()
+								.x(d => xScale(d.x))
+								.y(d => yScale(d.y))
+								.curve(d3.curveLinear);
+
+							// Draw the segment
 							g.append('path')
 								.datum(segment)
 								.attr('fill', 'none')
-								.attr('stroke', color)
-								.attr('stroke-width', 3)
-								.attr('stroke-opacity', opacity)
-								.attr('d', userLineGenerator);
+								.attr('stroke', colorScale(adjustedError))
+								.attr('stroke-width', 4)
+								.attr('stroke-opacity', reveal ? 0.3 : 0.8)
+								.attr('d', lineGenerator);
 						}
 					}
 				}
@@ -546,6 +584,15 @@
 			{/if}
 		</div>
 	</div>
+
+	{#if $guesses && $guesses.length > 0}
+		<div class="legend">
+			<div class="legend-label">Further</div>
+			<div class="legend-gradient"></div>
+			<div class="legend-label">Closer</div>
+		</div>
+	{/if}
+
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<svg
 		bind:this={svg}
@@ -608,14 +655,24 @@
 		flex: 1;
 	}
 
-	.score-display {
-		border: 2px solid steelblue;
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-		font-weight: bold;
-		color: black;
-		font-size: 1rem;
-		background-color: white;
+	.legend {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: 'Hanken Grotesk', sans-serif;
+	}
+
+	.legend-label {
+		font-size: 0.8rem;
+		color: #666;
+		margin: 0 0.5rem;
+	}
+
+	.legend-gradient {
+		width: 80px;
+		height: 6px;
+		background: linear-gradient(to right, #d73027, #ffffbf, #1a9850);
+		border-radius: 2px;
 	}
 
 	svg {
@@ -652,9 +709,6 @@
 		.draw {
 			font-size: 0.9rem;
 		}
-		.score-display {
-			font-size: 0.9rem;
-			padding: 0.2rem 0.4rem;
-		}
+		
 	}
 </style>

@@ -111,14 +111,6 @@
 		white-space: nowrap;
 	}
 
-	.subtitle {
-		margin: 0;
-		font-size: 0.9rem;
-		color: #666;
-		text-align: center;
-		max-width: 350px;
-		line-height: 1.3;
-	}
 
 	@media (max-width: 768px) {
 		header {
@@ -147,11 +139,6 @@
 
 		.title {
 			font-size: 1.5rem;
-		}
-
-		.subtitle {
-			font-size: 0.8rem;
-			max-width: 300px;
 		}
 
 		.about-link {
