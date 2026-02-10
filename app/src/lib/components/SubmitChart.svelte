@@ -9,9 +9,12 @@
 		lastScorePercentage
 	} from '$lib/stores/utils';
 
-	let { data, guess } = $props<{
+	let { data, guess, userId, onFeedbackShown, onFeedbackHidden } = $props<{
 		data: DataSet;
 		guess: UserLine;
+		userId: number;
+		onFeedbackShown?: () => void;
+		onFeedbackHidden?: () => void;
 	}>();
 
 	type GameStateType = 'playing' | 'won' | 'lost' | 'gave-up';
@@ -27,7 +30,6 @@
 	let nycOpenDataLink = 'https://opendata.cityofnewyork.us/';
 
 	function guessScore(guess: UserLine, data: DataSet): { status: string; percentage: number } {
-		// Check if 75% of segments are good and no segment is under ok
 		console.log('Calculating guess score...');
 		console.log('User guess points:', guess.points);
 		console.log('Actual data points:', data.data);
@@ -40,7 +42,8 @@
 		let totalSegments = dataPoints.length - 1;
 		let goodCount = 0;
 		let okCount = 0;
-		let totalAreaDiff = 0;
+		let totalUserAreaDiff = 0;
+		let totalWorstArea = 0;
 
 		for (let i = 0; i < totalSegments; i++) {
 			const userPoint1 = guess.points[i];
@@ -49,42 +52,31 @@
 			const dataPoint1 = data.data[i];
 			const dataPoint2 = data.data[i + 1];
 
-			// calculate area difference for this segment
-			let a =
-				userPoint2.y > dataPoint2.y ? userPoint2.y - dataPoint2.y : dataPoint2.y - userPoint2.y;
-			let b =
-				userPoint1.y > dataPoint1.y ? userPoint1.y - dataPoint1.y : dataPoint1.y - userPoint1.y;
-			let h = 1; // constant
+			// Assume constant time difference (h = 1) for all segments
+			const h = 1;
+
+			// Calculate area difference for this segment
+			let a = Math.abs(userPoint2.y - dataPoint2.y);
+			let b = Math.abs(userPoint1.y - dataPoint1.y);
 			let areaDifference = ((a + b) / 2) * h;
 
-			totalAreaDiff += areaDifference;
+			totalUserAreaDiff += areaDifference;
 
-			let goodArea = (1.5 * unit + 1.5 * unit) / 2;
-			let okArea = (2 * unit + 2 * unit) / 2;
+			// Calculate worst possible area for this segment
+			let maxDiff1 = Math.max(Math.abs(dataPoint1.y - dataMinY), Math.abs(dataPoint1.y - dataMaxY));
+			let maxDiff2 = Math.max(Math.abs(dataPoint2.y - dataMinY), Math.abs(dataPoint2.y - dataMaxY));
+			let worstArea = ((maxDiff1 + maxDiff2) / 2) * h;
+			totalWorstArea += worstArea;
+
+			let goodArea = (1.5 * unit + 1.5 * unit) / 2 * h; // Scale by time (now constant)
+			let okArea = (2 * unit + 2 * unit) / 2 * h;
 
 			if (areaDifference <= goodArea) goodCount++;
 			if (areaDifference <= okArea) okCount++;
 		}
 
-		// Calculate the worst possible guess: each user point is at the furthest bound (max or min y)
-		let worstTotalDiff = 0;
-		for (let i = 0; i < dataPoints.length; i++) {
-			const dataY = dataPoints[i].y;
-			const furthestY =
-				Math.abs(dataY - dataMaxY) > Math.abs(dataY - dataMinY) ? dataMaxY : dataMinY;
-			worstTotalDiff += Math.abs(dataY - furthestY);
-		}
-
-		// Calculate user's total difference
-		let userTotalDiff = 0;
-		for (let i = 0; i < dataPoints.length; i++) {
-			userTotalDiff += Math.abs(dataPoints[i].y - guess.points[i].y);
-		}
-
-		let percentage =
-			worstTotalDiff === 0
-				? 100
-				: Math.round(Math.max(0, (1 - userTotalDiff / worstTotalDiff) * 100));
+		// Calculate percentage based on area accuracy (0-100)
+		let percentage = totalWorstArea === 0 ? 100 : Math.round(Math.max(0, (1 - totalUserAreaDiff / totalWorstArea) * 100));
 
 		let status: string;
 		if (goodCount >= 0.75 * totalSegments && okCount === totalSegments) {
@@ -98,7 +90,27 @@
 		return { status, percentage };
 	}
 
-	function updateGameState() {
+	async function saveScore(percentage: number) {
+		try {
+			const response = await fetch('/api/v1/score', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					user_id: userId,
+					dataset_id: data.dataset_id,
+					score: percentage
+				})
+			});
+
+			if (!response.ok) {
+				console.error('Failed to save score:', await response.text());
+			}
+		} catch (error) {
+			console.error('Error saving score:', error);
+		}
+	}
+
+	async function updateGameState() {
 		// check if guess accurate
 		let result = guessScore(guess, data);
 		let guessStatus = result.status;
@@ -113,15 +125,20 @@
 		accuracyText = `${percentage}%`;
 		accuracyClass = result.status === 'won' ? 'correct' : percentage >= 50 ? 'close' : 'far-off';
 
+		// Save score to database
+		await saveScore(percentage);
+
 		if (guessStatus === 'won') {
 			gameState = 'won';
 			feedback = 'Congratulations! Your guess is';
+			onFeedbackShown?.();
 			$revealAnswer = true;
 			return;
 		} else {
 			if (numGuesses >= maxGuesses) {
 				gameState = 'lost';
 				feedback = 'Sorry, you have used all your guesses. Your last guess was';
+				onFeedbackShown?.();
 				$revealAnswer = true;
 				numGuesses++;
 				return;
@@ -140,6 +157,7 @@
 	function handleGiveUp() {
 		gameState = 'gave-up';
 		feedback = 'You gave up.';
+		onFeedbackShown?.();
 		$revealAnswer = true;
 		$currentGuess = { points: [] };
 	}
@@ -148,6 +166,7 @@
 		gameState = 'playing';
 		numGuesses = 1;
 		feedback = '';
+		onFeedbackHidden?.();
 		$revealAnswer = false;
 		$currentGuess = { points: [] };
 		$guesses = [];
@@ -271,7 +290,6 @@
 	.feedback {
 		width: 80%;
 		padding: 1rem;
-		background-color: #f0f0f0;
 		border-radius: 8px;
 		text-align: left;
 		font-size: 1rem;
@@ -404,13 +422,13 @@
 	}
 
 	.give-up-btn {
-		border: #b32303 solid 3px;
+		border: rgb(0, 0, 0,0.8) solid 3px;
 		background-color: white;
 		font-weight: bold;
 	}
 
 	.give-up-btn:hover {
-		background-color: #b32303;
+		background-color: black;
 		color: white;
 	}
 

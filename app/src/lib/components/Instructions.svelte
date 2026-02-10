@@ -20,7 +20,6 @@
 
 <style>
 	.instructions-box {
-		background-color: #f9f9f9;
 		border: 2px solid #ddd;
 		border-radius: 8px;
 		padding: 1rem;

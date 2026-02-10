@@ -1,8 +1,8 @@
 interface UserData {
-    id: number;
-    name: string;
-    email: string;
-    isAdmin: boolean;
+	id: number;
+	name: string;
+	cookie: string;
+	isAdmin: boolean;
 }
 
 export type { UserData };

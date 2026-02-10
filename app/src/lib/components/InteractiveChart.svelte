@@ -20,6 +20,25 @@
 	let svg: any;
 	let containerWidth = $state(width);
 
+	// Tooltip state
+	let tooltip = $state({ show: false, x: 0, y: 0, content: '' });
+
+	// Tooltip functions
+	function showTooltip(event: MouseEvent, d: any) {
+		const year = typeof d.x === 'number' ? d.x : d.x.getFullYear();
+		const value = formatter.format(d.y);
+		tooltip = {
+			show: true,
+			x: event.clientX + 10,
+			y: event.clientY - 10,
+			content: `<b>${year}</b><br/> ${value}`
+		};
+	}
+
+	function hideTooltip() {
+		tooltip = { show: false, x: 0, y: 0, content: '' };
+	}
+
 	// Responsive height based on container width
 	let chartHeight = $derived(
 		containerWidth < 500 ? 250 : containerWidth < 768 ? 350 : containerWidth < 1024 ? 380 : 400
@@ -81,34 +100,8 @@
 			: (d3.extent(processedData, (d) => d.y) as [number, number])
 	);
 
-	// Handle mouse down - start drawing
-	function handleMouseDown(event: MouseEvent) {
-		if (reveal) return;
-		d3.selectAll('.missing-line').interrupt();
-		isPulsing = false;
-		isDrawing = true;
-		if (!hasStartedDrawing) hasStartedDrawing = true;
-		addPoint(event);
-	}
-
-	// Handle mouse move - continue drawing
-	function handleMouseMove(event: MouseEvent) {
-		if (!isDrawing) return;
-		addPoint(event);
-	}
-
-	// Handle mouse up - stop drawing
-	function handleMouseUp() {
-		isDrawing = false;
-		lastX = null;
-		if (!firstRelease && $currentGuess.points.length > 0) {
-			firstRelease = true;
-			isPulsing = true;
-		}
-	}
-
-	// Handle touch start - start drawing
-	function handleTouchStart(event: TouchEvent) {
+	// Handle pointer down - start drawing
+	function handlePointerDown(event: PointerEvent) {
 		event.preventDefault();
 		if (reveal) return;
 		d3.selectAll('.missing-line').interrupt();
@@ -118,16 +111,14 @@
 		addPoint(event);
 	}
 
-	// Handle touch move - continue drawing
-	function handleTouchMove(event: TouchEvent) {
-		event.preventDefault();
+	// Handle pointer move - continue drawing
+	function handlePointerMove(event: PointerEvent) {
 		if (!isDrawing) return;
 		addPoint(event);
 	}
 
-	// Handle touch end - stop drawing
-	function handleTouchEnd(event: TouchEvent) {
-		event.preventDefault();
+	// Handle pointer up - stop drawing
+	function handlePointerUp() {
 		isDrawing = false;
 		lastX = null;
 		if (!firstRelease && $currentGuess.points.length > 0) {
@@ -136,8 +127,8 @@
 		}
 	}
 
-	// Add a point based on mouse position
-	function addPoint(event: MouseEvent | TouchEvent) {
+	// Add a point based on pointer position
+	function addPoint(event: PointerEvent) {
 		if (!svg) return;
 
 		const chartWidth = containerWidth - margin.left - margin.right;
@@ -145,15 +136,8 @@
 
 		// Get position relative to SVG
 		const rect = svg.getBoundingClientRect();
-		let clientX: number, clientY: number;
-		if (event instanceof TouchEvent) {
-			const touch = event.touches[0];
-			clientX = touch.clientX;
-			clientY = touch.clientY;
-		} else {
-			clientX = event.clientX;
-			clientY = event.clientY;
-		}
+		const clientX = event.clientX;
+		const clientY = event.clientY;
 		const mouseX = clientX - rect.left - margin.left;
 		const mouseY = clientY - rect.top - margin.top;
 
@@ -390,7 +374,10 @@
 				.attr('cx', (d) => xScale(d.x))
 				.attr('cy', (d) => yScale(d.y))
 				.attr('r', 5)
-				.attr('fill', 'steelblue');
+				.attr('fill', 'steelblue')
+				.on('mouseover', (event, d) => showTooltip(event, d))
+				.on('mousemove', (event, d) => showTooltip(event, d))
+				.on('mouseout', hideTooltip);
 		}
 
 		// Add user-drawn line if there are user points
@@ -564,14 +551,20 @@
 		bind:this={svg}
 		role="application"
 		aria-label="Interactive chart - click and drag to draw"
-		onmousedown={handleMouseDown}
-		onmousemove={handleMouseMove}
-		onmouseup={handleMouseUp}
-		onmouseleave={handleMouseUp}
-		ontouchstart={handleTouchStart}
-		ontouchmove={handleTouchMove}
-		ontouchend={handleTouchEnd}
+		onpointerdown={handlePointerDown}
+		onpointermove={handlePointerMove}
+		onpointerup={handlePointerUp}
+		onpointerleave={handlePointerUp}
 	></svg>
+
+	{#if tooltip.show}
+		<div
+			class="tooltip"
+			style="left: {tooltip.x}px; top: {tooltip.y}px;"
+		>
+			{@html tooltip.content}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -630,6 +623,19 @@
 		display: block;
 		cursor: pointer;
 		touch-action: none;
+	}
+
+	.tooltip {
+		position: fixed;
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		padding: 8px 12px;
+		border-radius: 4px;
+		font-size: 14px;
+		font-family: 'Hanken Grotesk', sans-serif;
+		pointer-events: none;
+		z-index: 1000;
+		white-space: nowrap;
 	}
 
 	@media (max-width: 768px) {

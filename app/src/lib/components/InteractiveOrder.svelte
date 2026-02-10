@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	let {
 		title = 'Problem Title',
 		data = [],
@@ -31,8 +33,19 @@
 	let touchDraggedElement: HTMLElement | null = $state(null);
 	let touchStartX = $state(0);
 	let touchStartY = $state(0);
+	let mobileFirst = $state(false);
+	let windowWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 0);
 
-	$inspect('slots', slots);
+
+
+	    onMount(() => {
+        const handleResize = () => {
+            windowWidth = window.innerWidth;
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    });
+	
 
 	// Watch for reveal or submitted changes and auto-sort
 	$effect(() => {
@@ -41,10 +54,15 @@
 			const sorted = [...data].sort((a, b) => a.sort_order - b.sort_order);
 			slots = sorted.map((item) => item.x);
 			availableBoroughs = [];
-		} else if (!reveal) {
-			// Reset when reveal is turned off
+		} else if (!reveal && correctSlots.size === 0 && incorrectSlots.size === 0) {
+			// Reset when reveal is turned off and no submission has been made
 			slots = [null, null, null, null, null];
 			availableBoroughs = [...boroughs];
+		}
+
+		// if on mobile <400, is has been submitted once change mobileFirst to true
+		if (windowWidth < 700 && (correctSlots.size > 0 || incorrectSlots.size > 0)) {
+			mobileFirst = true;
 		}
 	});
 
@@ -52,6 +70,8 @@
 		draggedItem = borough;
 		draggedFromSlot = fromSlot;
 	}
+
+	
 
 	function handleDragOver(event: DragEvent) {
 		event.preventDefault();
@@ -98,8 +118,30 @@
 		draggedFromSlot = null;
 	}
 
+	function getSlotIndexFromTouch(touch: Touch): number | null {
+		const slots = document.querySelectorAll('.slot');
+		for (let i = 0; i < slots.length; i++) {
+			const rect = slots[i].getBoundingClientRect();
+			if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+				touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+				return i;
+			}
+		}
+		return null;
+	}
+
+	function handleDropOnAvailable() {
+		// If dragging a placed item and dropping outside slots, put it back to available
+		if (draggedFromSlot !== null && draggedItem) {
+			availableBoroughs = [...availableBoroughs, draggedItem];
+			slots[draggedFromSlot] = null;
+		}
+		// Reset drag state
+		draggedItem = null;
+		draggedFromSlot = null;
+	}
+
 	function handleTouchStart(event: TouchEvent, borough: string, fromSlot: number | null = null) {
-		event.preventDefault();
 		draggedItem = borough;
 		draggedFromSlot = fromSlot;
 		isTouchDragging = true;
@@ -112,7 +154,6 @@
 
 	function handleTouchMove(event: TouchEvent) {
 		if (!isTouchDragging || !touchDraggedElement) return;
-		event.preventDefault();
 		const touch = event.touches[0];
 		const deltaX = touch.clientX - touchStartX;
 		const deltaY = touch.clientY - touchStartY;
@@ -127,18 +168,11 @@
 			touchDraggedElement.style.transform = '';
 		}
 		const touch = event.changedTouches[0];
-		const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-		if (elementAtPoint) {
-			const slotElement = elementAtPoint.closest('.slot');
-			if (slotElement) {
-				const allSlots = Array.from(slotElement.parentElement?.querySelectorAll('.slot') || []);
-				const slotIndex = allSlots.indexOf(slotElement);
-				if (slotIndex !== -1) {
-					handleDropOnSlot(slotIndex);
-				}
-			} else {
-				handleDropOnAvailable();
-			}
+		const slotIndex = getSlotIndexFromTouch(touch);
+		if (slotIndex !== null) {
+			handleDropOnSlot(slotIndex);
+		} else {
+			handleDropOnAvailable();
 		}
 		isTouchDragging = false;
 		touchDraggedElement = null;
@@ -157,9 +191,11 @@
 	<div class="main-container">
 		<div class="slots-container">
 			{#each slots as slot, index}
-				<div class="row" class:centered={reveal}>
+				<div class="row" class:centered={submitted || reveal || mobileFirst}>
 					<div
 						class="slot {slot !== null ? 'filled' : ''}"
+						role="button"
+						tabindex="0"
 						ondragover={handleDragOver}
 						ondrop={() => handleDropOnSlot(index)}
 					>
@@ -174,6 +210,8 @@
 								class:light-bg={['Staten Island', 'Manhattan', 'Queens'].includes(slot)}
 								class:incorrect-bg={incorrectSlots.has(index) && !reveal}
 								class:correct-bg={correctSlots.has(index) && !reveal}
+								role="button"
+								tabindex="0"
 								draggable={!correctSlots.has(index)}
 								ondragstart={() => handleDragStart(slot, index)}
 								ontouchstart={(e) => handleTouchStart(e, slot, index)}
@@ -201,6 +239,8 @@
 						{#if availableBoroughs[index]}
 							<div
 								class="borough-box"
+								role="button"
+								tabindex="0"
 								draggable="true"
 								ondragstart={() => handleDragStart(availableBoroughs[index])}
 								ontouchstart={(e) => handleTouchStart(e, availableBoroughs[index])}
@@ -330,13 +370,6 @@
 		background-color: transparent;
 	}
 
-	.available-container {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		flex: 1;
-	}
-
 	.borough-box {
 		background-color: white;
 		border: 3.5px solid #ddd;
@@ -393,16 +426,6 @@
 		color: black;
 	}
 
-	.animation-wrapper {
-		position: relative;
-		width: 100%;
-		height: 100%;
-	}
-
-	.animation-wrapper.animating {
-		animation: slideToPosition 2s ease-in-out;
-	}
-
 	.borough-box.placed.incorrect-bg {
 		background-color: #fdd;
 		border-color: rgb(130, 0, 0);
@@ -437,23 +460,8 @@
 		color: white !important;
 	}
 
-	@keyframes slideToPosition {
-		from {
-			transform: translateY(var(--offset, 0));
-		}
-		to {
-			transform: translateY(0);
-		}
-	}
-
 	.borough-box:active {
 		cursor: grabbing;
-	}
-
-	.dragging {
-		z-index: 1000;
-		position: relative;
-		pointer-events: none;
 	}
 
 	@media (max-width: 1024px) {
@@ -470,6 +478,38 @@
 
 		.row {
 			gap: 1rem;
+		}
+
+		.row.centered {
+			flex-direction: column;
+			gap: 0.75rem;
+			justify-content: center;
+		}
+
+		.row.centered .slot {
+			width: 100%;
+			max-width: none;
+		}
+
+		.row.centered .option-slot {
+			display: none;
+		}
+
+		.borough-box {
+			height: 55px;
+			min-height: 44px; /* Accessibility: minimum touch target */
+			font-size: 1rem;
+			padding: 0 0.75rem;
+		}
+
+		.borough-box.placed {
+			padding: 0 1.5rem;
+		}
+
+		.slot,
+		.option-slot {
+			height: 55px;
+			min-height: 44px;
 		}
 	}
 
@@ -497,22 +537,23 @@
 			gap: 0.5rem;
 		}
 
+		.row.centered {
+			gap: 0.5rem;
+		}
+
 		.borough-box {
 			border-width: 2px;
-			font-size: 1rem;
-			padding: 0 0.5rem;
 			height: 50px;
+			font-size: 0.95rem;
+			padding: 0 0.5rem;
 		}
 
 		.borough-box.placed {
 			padding: 0 0.8rem;
-			font-size: 1rem;
+			font-size: 0.95rem;
 		}
 
-		.borough-box.placed .slot-number {
-			font-size: 1rem;
-		}
-
+		.borough-box.placed .slot-number,
 		.borough-box.placed .right-content {
 			font-size: 1rem;
 		}
@@ -521,10 +562,7 @@
 			font-size: 1rem;
 		}
 
-		.slot {
-			height: 50px;
-		}
-
+		.slot,
 		.option-slot {
 			height: 50px;
 		}

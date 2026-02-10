@@ -6,12 +6,18 @@
 		data,
 		slots = $bindable(),
 		correctSlots = $bindable(new Set<number>()),
-		incorrectSlots = $bindable(new Set<number>())
+		incorrectSlots = $bindable(new Set<number>()),
+		userId,
+		onFeedbackShown,
+		onFeedbackHidden
 	} = $props<{
 		data: DataSet;
 		slots?: (string | null)[];
 		correctSlots?: Set<number>;
 		incorrectSlots?: Set<number>;
+		userId: number;
+		onFeedbackShown?: () => void;
+		onFeedbackHidden?: () => void;
 	}>();
 
 	$inspect('correctSlots', correctSlots);
@@ -30,7 +36,7 @@
 		slots: (string | null)[],
 		data: DataSet
 	): { correct: number; status: string } {
-		if (!data || data.length === 0) return { correct: 0, status: 'wrong' };
+		if (!data || !data.data || data.data.length === 0) return { correct: 0, status: 'wrong' };
 
 		// Sort data by sort_order to get correct positions
 		const correctOrder = [...data.data]
@@ -63,24 +69,49 @@
 		}
 	}
 
-	function updateGameState() {
+	async function saveScore(numCorrect: number) {
+		try {
+			const response = await fetch('/api/v1/score', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					user_id: userId,
+					dataset_id: data.dataset_id,
+					score: numCorrect
+				})
+			});
+
+			if (!response.ok) {
+				console.error('Failed to save score:', await response.text());
+			}
+		} catch (error) {
+			console.error('Error saving score:', error);
+		}
+	}
+
+	async function updateGameState() {
 		// Check if all slots are filled
-		if (slots.some((slot) => slot === null)) {
+		if (slots.some((slot: string | null) => slot === null)) {
 			feedback = 'Please fill all slots before submitting.';
 			return;
 		}
 
 		let result = checkOrderScore(slots, data);
 
+		// Save score to database
+		await saveScore(result.correct);
+
 		if (result.status === 'won') {
 			gameState = 'won';
 			feedback = `Congratulations! All ${result.correct} are in the correct order!`;
+			onFeedbackShown?.();
 			$revealAnswer = true;
 			return;
 		} else {
 			if (numGuesses >= maxGuesses) {
 				gameState = 'lost';
 				feedback = `Sorry, you have used all your guesses. You got ${result.correct} correct. The correct answer is now revealed.`;
+				onFeedbackShown?.();
 				$revealAnswer = true;
 				numGuesses++;
 				return;
@@ -102,6 +133,7 @@
 	function handleGiveUp() {
 		gameState = 'lost';
 		feedback = 'You gave up. The correct answer is now revealed.';
+		onFeedbackShown?.();
 		$revealAnswer = true;
 	}
 
@@ -109,6 +141,7 @@
 		gameState = 'playing';
 		numGuesses = 1;
 		feedback = '';
+		onFeedbackHidden?.();
 		$revealAnswer = false;
 		correctSlots.clear();
 		incorrectSlots.clear();
@@ -152,7 +185,7 @@
 			<button
 				class="submit-btn"
 				onclick={handleSubmit}
-				disabled={numGuesses > maxGuesses || slots.some((slot) => slot === null)}
+				disabled={numGuesses > maxGuesses || slots.some((slot: string | null) => slot === null)}
 			>
 				{#if numGuesses <= maxGuesses}
 					Submit Guess
@@ -210,7 +243,6 @@
 
 	.feedback {
 		padding: 1rem;
-		background-color: #f0f0f0;
 		border-radius: 8px;
 		font-size: 1rem;
 		color: #333;
@@ -270,13 +302,13 @@
 	}
 
 	.give-up-btn {
-		border: #b32303 solid 3px;
+		border: rgb(0, 0, 0,0.8)  solid 3px;
 		background-color: white;
 		font-weight: bold;
 	}
 
 	.give-up-btn:hover {
-		background-color: #b32303;
+		background-color: black;
 		color: white;
 	}
 

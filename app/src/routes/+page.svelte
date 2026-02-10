@@ -1,12 +1,13 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 	import Instructions from '$lib/components/Instructions.svelte';
 	import InteractiveChart from '$lib/components/InteractiveChart.svelte';
 	import InteractiveOrder from '$lib/components/InteractiveOrder.svelte';
 	import SubmitChart from '$lib/components/SubmitChart.svelte';
 	import SubmitOrder from '$lib/components/SubmitOrder.svelte';
+	import Compare from '$lib/components/Compare.svelte';
 
-	import type { UserData } from '$lib/types/UserData';
 	import type { DataSet } from '$lib/types/DataSet';
 
 	import {
@@ -27,6 +28,15 @@
 	let data = $state(null as DataSet | null);
 	let reveal: boolean = $state(false);
 	let loading: boolean = $state(true);
+	let showCompare = $state(false);
+
+	function showCompareCallback() {
+		showCompare = true;
+	}
+
+	function hideCompareCallback() {
+		showCompare = false;
+	}
 
 	// Get dataset ID from URL parameter, or use today's dataset from server, or default to 6
 	let dataset_id: number = $derived(
@@ -93,7 +103,10 @@
 				reveal={$revealAnswer}
 				lastScore={$lastScorePercentage}
 			/>
-			<SubmitChart {data} guess={$currentGuess} />
+			<SubmitChart {data} guess={$currentGuess} userId={serverData.userId} onFeedbackShown={showCompareCallback} onFeedbackHidden={hideCompareCallback} />
+			{#if showCompare}
+				<Compare datasetId={data.dataset_id} userId={serverData.userId} gameType="line" />
+			{/if}
 		</div>
 	{:else if data.type == 'order'}
 		<div class="chart-wrapper">
@@ -111,12 +124,21 @@
 				bind:slots={$orderSlots}
 				bind:correctSlots={$correctSlots}
 				bind:incorrectSlots={$incorrectSlots}
+				userId={serverData.userId}
+				onFeedbackShown={showCompareCallback}
+				onFeedbackHidden={hideCompareCallback}
 			/>
+			{#if showCompare}
+				<Compare datasetId={data.dataset_id} userId={serverData.userId} gameType="order" />
+			{/if}
 		</div>
 	{/if}
 {:else}
 	<div class="error">Failed to load chart data</div>
 {/if}
+
+<div class="footer"></div>
+
 
 <style>
 	.chart-wrapper {
@@ -144,6 +166,10 @@
 		font-size: 1.2rem;
 	}
 
+	.footer {
+		margin-top: 2rem;
+	}
+
 	@media (max-width: 768px) {
 		.chart-wrapper {
 			width: calc(100% - 2rem);
@@ -152,9 +178,4 @@
 		}
 	}
 
-	@media (max-width: 360px) {
-		.borough-box.placed .slot-number {
-			font-size: small;
-		}
-	}
 </style>
