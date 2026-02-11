@@ -11,12 +11,11 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ error: 'dataset_id parameter is required' }, { status: 400 });
 		}
 
-		// Get all scores for this dataset from today
+		// Get all scores for this dataset
 		const scores = await sql`
 			SELECT score, COUNT(*) as count
 			FROM user_scores
 			WHERE dataset_id = ${datasetId}
-				AND score_date = CURRENT_DATE
 			GROUP BY score
 			ORDER BY score ASC
 		`;
@@ -39,7 +38,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 
 		return json({
-			scores: scores.map(row => ({
+			scores: scores.map((row) => ({
 				score: Number(row.score),
 				count: Number(row.count)
 			})),

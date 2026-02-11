@@ -518,6 +518,9 @@
 			font-size: 0.9rem;
 			padding-block: 0.5px;
 		}
+		.borough-name { 
+			padding-left: 1rem !important;
+		}
 
 		.title {
 			font-size: 1.3rem;

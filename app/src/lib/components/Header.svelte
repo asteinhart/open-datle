@@ -1,12 +1,26 @@
 <script>
-	let currentDate = $state(
-		new Date().toLocaleDateString('en-US', {
+	let isMobile = false;
+	let currentDate = $state('');
+	if (typeof window !== 'undefined') {
+		isMobile = window.innerWidth <= 768;
+	}
+	if (isMobile) {
+		currentDate = new Date().toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric'
+		});
+	} else {
+		currentDate = new Date().toLocaleDateString('en-US', {
 			weekday: 'long',
 			year: 'numeric',
 			month: 'long',
 			day: 'numeric'
-		})
-	);
+		});
+	}
+
+
+
 </script>
 
 <header>
@@ -101,6 +115,7 @@
 		height: 40px;
 		flex-shrink: 0;
 		margin-right: -0.6rem;
+		margin-bottom: 0.2rem;
 	}
 
 	.title {
@@ -112,38 +127,28 @@
 	}
 
 
-	@media (max-width: 768px) {
+	@media (max-width: 500px) {
 		header {
-			flex-direction: column;
 			gap: 0.5rem;
 			padding: 0.5rem;
-		}
-
-		.date {
-			order: 2;
-			text-align: center;
 		}
 
 		.spacer {
 			display: none;
 		}
 
-		.logo-link {
-			order: 1;
-		}
-
 		.logo {
-			width: 32px;
-			height: 32px;
+			width: 30px;
+			height: 30px;
+			margin-right: -0.5rem;
 		}
 
 		.title {
-			font-size: 1.5rem;
+			font-size: 1.2rem;
 		}
 
 		.about-link {
-			order: 3;
-			text-align: center;
+			
 			font-size: 0.8rem;
 		}
 	}

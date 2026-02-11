@@ -247,7 +247,7 @@
 <style>
 	.submit-container {
 		max-width: 500px;
-		margin: 0 auto 1rem auto;
+		margin: .5rem auto 1rem auto;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
@@ -300,7 +300,7 @@
 
 	@media (max-width: 768px) {
 		.submit-container {
-			margin-top: 0.3rem;
+			margin-top: 0.5rem;
 		}
 		.feedback {
 			width: 90%;
@@ -309,9 +309,9 @@
 		}
 
 		.box {
-			width: 25px;
-			height: 25px;
-			font-size: 0.9rem;
+			width: 30px;
+			height: 30px;
+			font-size: 1rem;
 		}
 
 		button {
@@ -338,7 +338,7 @@
 
 		.try-again-btn {
 			padding: 0.2rem 0.6rem;
-			font-size: 0.6rem;
+			font-size: 0.7rem;
 		}
 
 		.button-group {
@@ -425,6 +425,7 @@
 		border: rgb(0, 0, 0,0.8) solid 3px;
 		background-color: white;
 		font-weight: bold;
+		color: black;
 	}
 
 	.give-up-btn:hover {

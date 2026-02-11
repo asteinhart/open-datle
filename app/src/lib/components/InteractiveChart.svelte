@@ -27,10 +27,26 @@
 	function showTooltip(event: MouseEvent, d: any) {
 		const year = typeof d.x === 'number' ? d.x : d.x.getFullYear();
 		const value = formatter.format(d.y);
+		let x = event.clientX + 10;
+		let y = event.clientY - 10;
+
+		// Adjust position to keep tooltip on screen (assuming ~100px width, ~50px height)
+		const tooltipWidth = 100;
+		const tooltipHeight = 50;
+		if (x + tooltipWidth > window.innerWidth) {
+			x = event.clientX - tooltipWidth - 10;
+		}
+		if (y + tooltipHeight > window.innerHeight) {
+			y = event.clientY - tooltipHeight - 10;
+		}
+		if (y < 0) {
+			y = event.clientY + 10;
+		}
+
 		tooltip = {
 			show: true,
-			x: event.clientX + 10,
-			y: event.clientY - 10,
+			x,
+			y,
 			content: `<b>${year}</b><br/> ${value}`
 		};
 	}

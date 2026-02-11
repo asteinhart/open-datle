@@ -201,7 +201,7 @@
 <style>
 	.submit-container {
 		max-width: 500px;
-		margin: 0rem auto 1rem auto;
+		margin: .5rem auto 1rem auto;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
@@ -242,10 +242,18 @@
 	}
 
 	.feedback {
+		width: 80%;
 		padding: 1rem;
 		border-radius: 8px;
+		text-align: left;
 		font-size: 1rem;
 		color: #333;
+		border: 2px solid #333;
+		flex-shrink: 0;
+	}
+
+	.dataset-info {
+		margin-top: 1rem;
 	}
 
 	.link {
@@ -329,15 +337,19 @@
 	}
 
 	@media (max-width: 768px) {
+		.submit-container {
+			margin-top: 0.5rem;
+		}
 		.feedback {
+			width: 90%;
 			padding: 0.75rem;
 			font-size: 0.9rem;
 		}
 
 		.box {
-			width: 25px;
-			height: 25px;
-			font-size: 0.9rem;
+			width: 30px;
+			height: 30px;
+			font-size: 1rem;
 		}
 
 		button {
@@ -353,13 +365,18 @@
 
 	@media (max-width: 400px) {
 		button {
-			padding: 0.3rem 0.8rem;
+			padding: 0.3rem 0.5rem;
 			font-size: 0.85rem;
+		}
+		.submit-btn,
+		.give-up-btn {
+			padding: 0.3rem 1rem;
+			font-size: 1rem;
 		}
 
 		.try-again-btn {
 			padding: 0.2rem 0.6rem;
-			font-size: 0.85rem;
+			font-size: 0.7rem;
 		}
 
 		.button-group {

@@ -171,7 +171,7 @@
 
 	@media (max-width: 768px) {
 		.chart-wrapper {
-			width: calc(100% - 2rem);
+			width: calc(100% - 1rem);
 			margin: 0.5rem auto 2rem auto;
 			border-radius: 4px;
 		}

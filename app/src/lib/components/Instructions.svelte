@@ -78,7 +78,7 @@
 
 	@media (max-width: 768px) {
 		.instructions-box {
-			width: calc(100% - 2rem);
+			width: calc(100% - 1rem);
 			margin: 0.5rem auto 0 auto;
 			border-radius: 4px;
 			padding: 0.5rem;
