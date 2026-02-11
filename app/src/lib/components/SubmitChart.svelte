@@ -414,11 +414,13 @@
 		border: solid 3px steelblue;
 		background-color: white;
 		font-weight: bold;
+		color: black;
 	}
 
 	.submit-btn:hover:not(:disabled) {
 		background-color: steelblue;
 		color: white;
+
 	}
 
 	.give-up-btn {
