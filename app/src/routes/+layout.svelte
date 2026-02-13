@@ -41,6 +41,9 @@
 
 	<!-- Viewport -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+	<!-- Robots -->
+	<meta name="robots" content="index, follow" />
 </svelte:head>
 
 {@render children()}

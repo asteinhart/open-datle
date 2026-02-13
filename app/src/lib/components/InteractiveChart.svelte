@@ -684,7 +684,7 @@
 	.chart-title {
 		font-size: 1.5rem;
 		font-weight: bold;
-		margin: 0 0 0.5rem 0;
+		margin: 0 0 0.3rem 0;
 		font-family: 'Hanken Grotesk', sans-serif;
 	}
 
