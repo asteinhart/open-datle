@@ -236,8 +236,11 @@
 
 		const defs = g.append('defs');
 
-		// Create color scale for accuracy: red (inaccurate/bad) to green (accurate/good)
-		const colorScale = (error: number) => d3.interpolateRdYlGn(1 - error);
+		// Create color scale: low error (close to actual) = dark blue, high error (far from actual) = light yellow
+		const colorScale = d3.scaleLinear<string>()
+			.domain([0, 0.167, 0.333, 0.5, 0.667, 0.833, 1])
+			.range(['#0c2c84', '#225ea8', '#1d91c0', '#41b6c4', '#7fcdbb', '#c7e9b4', '#fafa87'])
+			.clamp(true);
 
 		// Create scales
 		const xScale = d3.scaleTime().domain(xDomain).range([0, chartWidth]);
@@ -376,75 +379,6 @@
 				.text('through this point');
 		}
 
-		// Add the line and data points only if reveal is true
-		if (reveal) {
-			// First, add all dots with opacity 0 (so they're behind but ready)
-			const dots = [];
-			for (let i = 0; i < processedData.length; i++) {
-				const dot = g.append('circle')
-					.attr('class', 'dot')
-					.attr('cx', xScale(processedData[i].x))
-					.attr('cy', yScale(processedData[i].y))
-					.attr('r', 5)
-					.attr('fill', 'steelblue')
-					.attr('opacity', 0)
-					.on('mouseover', (event, d) => showTooltip(event, processedData[i]))
-					.on('mousemove', (event, d) => showTooltip(event, processedData[i]))
-					.on('mouseout', hideTooltip);
-				dots.push(dot);
-			}
-
-			// Then animate drawing the line segment by segment and fade in dots in sync
-			for (let i = 0; i < processedData.length - 1; i++) {
-				const segment = [processedData[i], processedData[i + 1]];
-				const segmentPath = g.append('path')
-					.datum(segment)
-					.attr('fill', 'none')
-					.attr('stroke', 'steelblue')
-					.attr('stroke-width', 3.5)
-					.attr('d', line);
-
-				const length = segmentPath.node().getTotalLength();
-				segmentPath
-					.attr('stroke-dasharray', length)
-					.attr('stroke-dashoffset', length)
-					.transition()
-					.delay(i * 400) // 400ms delay per segment
-					.duration(700) // 700ms to draw each segment
-					.attr('stroke-dashoffset', 0);
-
-				// Fade in dots when their segment starts
-				if (i === 0) {
-					// First dot at start
-					dots[0].transition()
-						.delay(0)
-						.duration(500)
-						.attr('opacity', 1);
-				}
-				// End dot of segment at start of segment
-				dots[i + 1].transition()
-					.delay(i * 400)
-					.duration(500)
-					.attr('opacity', 1);
-			}
-
-			// Add Voronoi-based tooltips for better hover experience
-			const delaunay = d3.Delaunay.from(processedData.map(d => [xScale(d.x), yScale(d.y)]));
-			const voronoi = delaunay.voronoi([0, 0, chartWidth, innerChartHeight]);
-
-			// Add Voronoi cells for tooltips
-			g.selectAll('.voronoi')
-				.data(processedData)
-				.enter()
-				.append('path')
-				.attr('class', 'voronoi')
-				.attr('d', (d, i) => voronoi.renderCell(i))
-				.attr('fill', 'none')
-				.attr('pointer-events', 'all')
-				.on('mouseover', (event, d) => showTooltip(event, d))
-				.on('mousemove', (event, d) => showTooltip(event, d))
-				.on('mouseout', hideTooltip);
-		}
 		if ($currentGuess.points && $currentGuess.points.length > 0) {
 			// Create a set of user x values for quick lookup
 			const userXSet = new Set(
@@ -500,6 +434,10 @@
 		if ($guesses && $guesses.length > 0) {
 			$guesses.forEach((guess, index) => {
 				if (guess.points && guess.points.length > 0) {
+					// Determine opacity based on reveal state and if this is the last guess
+					const isLastGuess = index === $guesses.length - 1;
+					const guessOpacity = reveal ? 0.3 : (isLastGuess ? 1 : 0.4);
+					
 					// Sort guess points by x coordinate
 					const sortedGuessPoints = [...guess.points].sort((a, b) => {
 						const aTime = typeof a.x === 'number' ? a.x : a.x.getTime();
@@ -529,10 +467,7 @@
 							const maxError2 = Math.max(point2.y - yDomain[0], yDomain[1] - point2.y);
 							const maxError = maxError1 + maxError2;
 							const normalizedError = maxError > 0 ? Math.min(1, error / maxError) : 0;
-							// Add cutoff and compress green area for more definition close to correct
-							const threshold = 0.7;
-							const adjustedError = normalizedError <= threshold ? Math.pow(normalizedError / threshold, 0.7) * threshold : 1;
-							segmentErrors.push(adjustedError);
+							segmentErrors.push(normalizedError);
 						} else {
 							segmentErrors.push(null); // No segment if points missing
 						}
@@ -553,7 +488,7 @@
 						);
 
 						if (guessPoint1 && guessPoint2 && segmentErrors[i] !== null) {
-							const adjustedError = segmentErrors[i];
+							const normalizedError = segmentErrors[i];
 							const segment = [guessPoint1, guessPoint2];
 
 							// Create line generator for this segment
@@ -563,17 +498,88 @@
 								.curve(d3.curveLinear);
 
 							// Draw the segment
+							// Map error to color: clamp at 0.6 so anything worse is light yellow
+							const colorValue = normalizedError >= 0.5 ? 1 : normalizedError;
+							const strokeColor = colorScale(colorValue);
+							console.log(`Segment ${i}: normalizedError=${normalizedError.toFixed(3)}, color=${strokeColor}`);
 							g.append('path')
 								.datum(segment)
 								.attr('fill', 'none')
-								.attr('stroke', colorScale(adjustedError))
+								.attr('stroke', strokeColor)
 								.attr('stroke-width', 4)
-								.attr('stroke-opacity', reveal ? 0.2 : 0.8)
+								.attr('stroke-opacity', guessOpacity)
 								.attr('d', lineGenerator);
 						}
 					}
 				}
 			});
+		}
+
+		// Add the line and data points only if reveal is true
+		if (reveal) {
+			// First, add all dots with opacity 0 (so they're behind but ready)
+			const dots = [];
+			for (let i = 0; i < processedData.length; i++) {
+				const dot = g.append('circle')
+					.attr('class', 'dot')
+					.attr('cx', xScale(processedData[i].x))
+					.attr('cy', yScale(processedData[i].y))
+					.attr('r', 5)
+					.attr('fill', 'steelblue')
+					.attr('opacity', 0);
+				dots.push(dot);
+			}
+
+			// Then animate drawing the line segment by segment and fade in dots in sync
+			for (let i = 0; i < processedData.length - 1; i++) {
+				const segment = [processedData[i], processedData[i + 1]];
+				const segmentPath = g.append('path')
+					.datum(segment)
+					.attr('fill', 'none')
+					.attr('stroke', 'steelblue')
+					.attr('stroke-width', 3.5)
+					.attr('d', line);
+
+				const length = segmentPath.node().getTotalLength();
+				segmentPath
+					.attr('stroke-dasharray', length)
+					.attr('stroke-dashoffset', length)
+					.transition()
+					.delay(i * 400) // 400ms delay per segment
+					.duration(700) // 700ms to draw each segment
+					.attr('stroke-dashoffset', 0);
+
+				// Fade in dots when their segment starts
+				if (i === 0) {
+					// First dot at start
+					dots[0].transition()
+						.delay(0)
+						.duration(500)
+						.attr('opacity', 1);
+				}
+				// End dot of segment at start of segment
+				dots[i + 1].transition()
+					.delay(i * 400)
+					.duration(500)
+					.attr('opacity', 1);
+			}
+
+			// Add Voronoi-based tooltips for better hover experience
+			const delaunay = d3.Delaunay.from(processedData.map(d => [xScale(d.x), yScale(d.y)]));
+			const voronoi = delaunay.voronoi([0, 0, chartWidth, innerChartHeight]);
+
+			// Add Voronoi cells for tooltips
+			g.selectAll('.voronoi')
+				.data(processedData)
+				.enter()
+				.append('path')
+				.attr('class', 'voronoi')
+				.attr('d', (d, i) => voronoi.renderCell(i))
+				.attr('fill', 'none')
+				.attr('pointer-events', 'all')
+				.on('mouseover', (event, d) => showTooltip(event, d))
+				.on('mousemove', (event, d) => showTooltip(event, d))
+				.on('mouseout', hideTooltip);
 		}
 
 		// Pulse missing points if first release happened
@@ -607,19 +613,7 @@
 
 			lines.exit().remove();
 
-			// Pulse function
-			function pulseLines() {
-				if (!isPulsing) return;
-				missingG
-					.selectAll('.missing-line')
-					.transition()
-					.duration(1000)
-					.attr('opacity', 0.4)
-					.transition()
-					.duration(1000)
-					.attr('opacity', 0)
-					.on('end', pulseLines);
-			}
+			
 
 			if (!missingG.selectAll('.missing-line').empty()) {
 				pulseLines();
@@ -730,7 +724,7 @@
 	.legend-gradient {
 		width: 80px;
 		height: 6px;
-		background: linear-gradient(to right, #d73027, #ffffbf, #1a9850);
+			background: linear-gradient(to left, #0c2c84, #225ea8, #1d91c0, #41b6c4, #7fcdbb, #c7e9b4, #ffffcc);
 		border-radius: 2px;
 	}
 
