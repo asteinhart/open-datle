@@ -131,12 +131,8 @@
 	}
 
 	function handleDropOnAvailable() {
-		// If dragging a placed item and dropping outside slots, put it back to available
-		if (draggedFromSlot !== null && draggedItem) {
-			availableBoroughs = [...availableBoroughs, draggedItem];
-			slots[draggedFromSlot] = null;
-		}
-		// Reset drag state
+		// Once a borough is placed in a slot, it cannot be moved back to available options
+		// Reset drag state without making any changes
 		draggedItem = null;
 		draggedFromSlot = null;
 	}
@@ -545,7 +541,7 @@
 		}
 
 		.borough-box {
-			border-width: 2px;
+			border-width: 3px;
 			height: 50px;
 			font-size: 0.95rem;
 			padding: 0 0.5rem;

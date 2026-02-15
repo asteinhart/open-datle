@@ -763,10 +763,10 @@
 			font-size: 1.2rem;
 		}
 		.chart-subtitle {
-			font-size: 0.9rem;
+			font-size: 1rem;
 		}
 		.draw {
-			font-size: 0.9rem;
+			font-size: 1rem;
 		}
 		
 	}

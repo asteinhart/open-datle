@@ -302,6 +302,7 @@
 		border: solid 3px steelblue;
 		background-color: white;
 		font-weight: bold;
+		color: black;
 	}
 
 	.submit-btn:hover:not(:disabled) {
@@ -313,6 +314,7 @@
 		border: rgb(0, 0, 0,0.8)  solid 3px;
 		background-color: white;
 		font-weight: bold;
+		color: black;
 	}
 
 	.give-up-btn:hover {
@@ -371,12 +373,12 @@
 		.submit-btn,
 		.give-up-btn {
 			padding: 0.3rem 1rem;
-			font-size: 1rem;
+			font-size: 1.1rem;
 		}
 
 		.try-again-btn {
 			padding: 0.2rem 0.6rem;
-			font-size: 0.7rem;
+			font-size: 1rem;
 		}
 
 		.button-group {
