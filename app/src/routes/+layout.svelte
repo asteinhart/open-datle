@@ -11,11 +11,11 @@
 	<!-- Meta Tags -->
 	<meta
 		name="description"
-		content="Test your knowledge of NYC data! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real NYC Open Data."
+		content="Test your knowledge of New York City! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real New York City data."
 	/>
 	<meta
 		name="keywords"
-		content="NYC data game, data visualization, guessing game, New York City, open data, statistics game, daily puzzle"
+		content="New York City data game, data visualization, guessing game, New York City, open data, statistics game, daily puzzle"
 	/>
 	<meta name="author" content="Austin Steinhart" />
 
@@ -25,7 +25,7 @@
 	<meta property="og:title" content="Open Datle - Daily Open Data Guessing Game" />
 	<meta
 		property="og:description"
-		content="Test your knowledge of NYC data! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real NYC Open Data."
+		content="Test your knowledge of New York City! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real New York City data."
 	/>
 	<meta property="og:image" content="https://open-datle.com/favicon.svg" />
 
@@ -35,7 +35,7 @@
 	<meta property="twitter:title" content="Open Datle - Daily Open Data Guessing Game" />
 	<meta
 		property="twitter:description"
-		content="Test your knowledge of NYC data! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real NYC Open Data."
+		content="Test your knowledge of New York City! Guess the trends in crime, housing, transportation, and more. A new challenge every day using real New York City data."
 	/>
 	<meta property="twitter:image" content="https://open-datle.com/favicon.svg" />
 
