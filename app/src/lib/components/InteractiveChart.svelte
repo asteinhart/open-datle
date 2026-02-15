@@ -238,8 +238,8 @@
 
 		// Create color scale: low error (close to actual) = dark blue, high error (far from actual) = light yellow
 		const colorScale = d3.scaleLinear<string>()
-			.domain([0, 0.167, 0.333, 0.5, 0.667, 0.833, 1])
-			.range(['#0c2c84', '#225ea8', '#1d91c0', '#41b6c4', '#7fcdbb', '#c7e9b4', '#fafa87'])
+			.domain([0, 0.08, 0.16, 0.24, 0.32, 0.4])
+			.range(['#0c2c84', '#225ea8', '#1d91c0', '#41b6c4', '#7fcdbb', '#c7e9b4'])
 			.clamp(true);
 
 		// Create scales
@@ -499,9 +499,9 @@
 
 							// Draw the segment
 							// Map error to color: clamp at 0.6 so anything worse is light yellow
-							const colorValue = normalizedError >= 0.5 ? 1 : normalizedError;
+							const colorValue = normalizedError >= 0.4 ? 1 : normalizedError;
 							const strokeColor = colorScale(colorValue);
-							console.log(`Segment ${i}: normalizedError=${normalizedError.toFixed(3)}, color=${strokeColor}`);
+							console.log(`Segment ${i}: normalizedError=${normalizedError.toFixed(3)}, colorValue= ${colorValue.toFixed(3)}, color=${strokeColor}, `);
 							g.append('path')
 								.datum(segment)
 								.attr('fill', 'none')
@@ -613,7 +613,19 @@
 
 			lines.exit().remove();
 
-			
+			// Pulse function
+			function pulseLines() {
+				if (!isPulsing) return;
+				missingG
+					.selectAll('.missing-line')
+					.transition()
+					.duration(1000)
+					.attr('opacity', 0.4)
+					.transition()
+					.duration(1000)
+					.attr('opacity', 0)
+					.on('end', pulseLines);
+			}
 
 			if (!missingG.selectAll('.missing-line').empty()) {
 				pulseLines();
