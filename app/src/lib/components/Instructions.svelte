@@ -67,9 +67,9 @@
 	}
 
 	li {
-		margin-bottom: 0.75rem;
+		margin-bottom: 0.25rem;
 		line-height: 1.5;
-		font-size: 0.9rem;
+		font-size: 1rem;
 	}
 
 	li:last-child {
@@ -91,6 +91,7 @@
 
 		li {
 			font-size: 0.85rem;
+			line-height: 1.2;
 		}
 	}
 </style>
