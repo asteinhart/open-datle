@@ -35,11 +35,15 @@ if users:
     for user in users:
         cur.execute(
             """
-            INSERT INTO users (user_id, email, created_at)
+            INSERT INTO users (user_id, cookie, created_at)
             VALUES (%s, %s, %s)
-            ON CONFLICT (email) DO NOTHING
+            ON CONFLICT (cookie) DO NOTHING
             """,
-            (user["user_id"], user["email"], user["created_at"]),
+            (
+                user["user_id"],
+                user.get("cookie", user.get("email", "anonymous")),
+                user["created_at"],
+            ),
         )
 
     # Update sequence to prevent conflicts

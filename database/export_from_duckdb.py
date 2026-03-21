@@ -19,7 +19,7 @@ for row in users:
     users_data.append(
         {
             "user_id": row[0],
-            "email": row[1],
+            "cookie": row[1],
             "created_at": str(row[2]) if row[2] else None,
         }
     )

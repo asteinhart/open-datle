@@ -4,15 +4,15 @@ import duckdb
 con = duckdb.connect("db/open_datle.db")
 
 # Insert sample users
-users = [("test@example.com",), ("user2@example.com",), ("user3@example.com",)]
+users = [("cookie-1",), ("cookie-2",), ("cookie-3",)]
 
-for email in users:
+for cookie in users:
     con.execute(
         """
-        INSERT INTO users (user_id, email)
+        INSERT INTO users (user_id, cookie)
         VALUES (nextval('seq_user_id'), ?)
     """,
-        email,
+        cookie,
     )
 
 # Insert sample datasets metadata

@@ -29,6 +29,69 @@ psql $DATABASE_URL -f migrate_to_neon.sql
 
 Or copy the contents of `migrate_to_neon.sql` and run it in the Neon SQL Editor.
 
+### 2.5. Run Additional Migrations
+
+For new features, run migration files using the automated script:
+
+```bash
+python run_migrations.py
+```
+
+This will run all migration files in the `migrations/` directory in alphabetical order.
+
+Or run individual migrations manually:
+
+```bash
+# Example: Add user_scores table
+psql $DATABASE_URL -f migrations/001_add_user_scores_table.sql
+```
+
+Always run migrations in numerical order and test them in a development environment first.
+
+## Database Migration Best Practices
+
+### Creating New Migrations
+
+1. **Versioned Files**: Name migration files with timestamps or sequential numbers (e.g., `001_add_user_scores_table.sql`)
+
+2. **Idempotent Operations**: Use `IF NOT EXISTS` and `IF EXISTS` to make migrations safe to run multiple times
+
+3. **Transactions**: Wrap migrations in `BEGIN;` and `COMMIT;` for atomicity
+
+4. **Proper Constraints**: Include foreign keys, check constraints, and unique constraints
+
+5. **Indexes**: Add appropriate indexes for frequently queried columns
+
+6. **Documentation**: Add comments explaining the purpose of the migration
+
+### Migration File Structure
+
+```sql
+-- Migration: Brief description
+-- Date: YYYY-MM-DD
+-- Description: Detailed explanation
+
+BEGIN;
+
+-- Your migration SQL here
+
+COMMIT;
+```
+
+### Testing Migrations
+
+1. **Development First**: Always test migrations in a development database
+2. **Backup Data**: Create backups before running migrations in production
+3. **Verify Results**: Check that data integrity is maintained
+4. **Rollback Plan**: Have a rollback script ready if needed
+
+### Common Migration Patterns
+
+- **Adding Tables**: Use `CREATE TABLE IF NOT EXISTS`
+- **Adding Columns**: Use `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+- **Modifying Data**: Use `UPDATE` statements carefully
+- **Dropping Objects**: Use `DROP ... IF EXISTS` with caution
+
 ### 3. Export Data from DuckDB
 
 ```bash

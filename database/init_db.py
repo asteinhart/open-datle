@@ -12,7 +12,7 @@ con.execute(
     """
     CREATE TABLE IF NOT EXISTS users (
         user_id INTEGER PRIMARY KEY,
-        email VARCHAR UNIQUE NOT NULL,
+        cookie VARCHAR UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
 """
