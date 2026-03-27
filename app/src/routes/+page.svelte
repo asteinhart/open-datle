@@ -50,7 +50,7 @@
 		fetch(`/api/v1/dataset?id=${dataset_id}`)
 			.then((res) => res.json())
 			.then((fetchedData) => {
-				console.log('Fetched data:', fetchedData);
+				//console.log('Fetched data:', fetchedData);
 				data = fetchedData;
 				loading = false;
 			})
