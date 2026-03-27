@@ -62,7 +62,7 @@
 
 	const margin = $derived(
 		containerWidth < 600
-			? { top: 20, right: 50, bottom: 20, left: 30 }
+			? { top: 20, right: 50, bottom: 20, left: 35 }
 			: { top: 40, right: 80, bottom: 40, left: 50 }
 	);
 
