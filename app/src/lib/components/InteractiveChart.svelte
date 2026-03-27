@@ -501,7 +501,7 @@
 							// Map error to color: clamp at 0.6 so anything worse is light yellow
 							const colorValue = normalizedError >= 0.4 ? 1 : normalizedError;
 							const strokeColor = colorScale(colorValue);
-							console.log(`Segment ${i}: normalizedError=${normalizedError.toFixed(3)}, colorValue= ${colorValue.toFixed(3)}, color=${strokeColor}, `);
+							//console.log(`Segment ${i}: normalizedError=${normalizedError.toFixed(3)}, colorValue= ${colorValue.toFixed(3)}, color=${strokeColor}, `);
 							g.append('path')
 								.datum(segment)
 								.attr('fill', 'none')

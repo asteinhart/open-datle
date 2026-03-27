@@ -18,12 +18,9 @@
 			day: 'numeric'
 		});
 	}
-
-
-
 </script>
 
-<-->
+<header>
 	<div class="date">{currentDate}</div>
 	<a href="/" class="logo-link">
 		<div class="title-container">
@@ -53,7 +50,7 @@
 		</div>
 	</a>
 	<div class="spacer"></div>
-	<!-- <a href="/about" class="about-link">About</a>--> 
+	<div class="about-link"></div>
 </header>
 
 <style>
@@ -61,7 +58,7 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		padding: .7rem 1rem;
+		padding: 0.7rem 1rem;
 		background-color: #f5f5f5;
 		border-bottom: 2px solid #ddd;
 	}
@@ -86,8 +83,6 @@
 		border-radius: 4px;
 		transition: background-color 0.2s;
 	}
-
-	
 
 	.logo-link {
 		flex-shrink: 0;
@@ -126,7 +121,6 @@
 		white-space: nowrap;
 	}
 
-
 	@media (max-width: 500px) {
 		header {
 			gap: 0.5rem;
@@ -148,7 +142,6 @@
 		}
 
 		.about-link {
-			
 			font-size: 0.8rem;
 		}
 	}

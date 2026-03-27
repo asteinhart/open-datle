@@ -30,9 +30,9 @@
 	let nycOpenDataLink = 'https://opendata.cityofnewyork.us/';
 
 	function guessScore(guess: UserLine, data: DataSet): { status: string; percentage: number } {
-		console.log('Calculating guess score...');
-		console.log('User guess points:', guess.points);
-		console.log('Actual data points:', data.data);
+		//console.log('Calculating guess score...');
+		//console.log('User guess points:', guess.points);
+		//console.log('Actual data points:', data.data);
 
 		let dataPoints = data.data;
 		let dataMaxY = Math.max(...dataPoints.map((d) => d.y));
