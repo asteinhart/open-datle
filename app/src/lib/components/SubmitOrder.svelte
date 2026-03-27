@@ -151,7 +151,7 @@
 
 {#snippet datasetInfo()}
 	<br /> <br />
-	This data is from the dataset from NYC Open Data.
+	This data is free public data published by New York City agencies and other partners.
 	<a class="link" href={datasetLink} target="_blank">Access the data</a> or learn more about
 	<a class="link" href={nycOpenDataLink} target="_blank">NYC Open Data</a>.
 {/snippet}
