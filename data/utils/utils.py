@@ -3,12 +3,15 @@ from sodapy import Socrata
 import os
 import json
 import requests
+import time
 from pathlib import Path
 
 
 from data.utils.env import APP_TOKEN, PASSWORD
 
 PREPARED_DATA_DIR = Path("./data/prepared_data")
+DEFAULT_PAGE_SIZE = 500000
+DEFAULT_MAX_RETRIES = 5
 
 # Borough mapping for NYC order-type datasets
 BOROUGH_MAP = {
@@ -33,32 +36,91 @@ def set_client() -> Socrata:
         APP_TOKEN,
         username="asteinhart3@gmail.com",
         password=PASSWORD,
+        timeout=60,
     )
 
     return client
 
 
-def fetch_data_from_api(dataset_identifier: str, limit: int = 1000) -> pl.DataFrame:
+def fetch_data_from_api(
+    dataset_identifier: str, limit: int | None = 1000
+) -> pl.DataFrame:
     """
     Fetch data from a Socrata API and return it as a Polars DataFrame.
 
     Parameters:
     - client: An instance of sodapy.Socrata to interact with the API.
     - dataset_identifier: The identifier of the dataset to fetch.
-    - limit: The maximum number of records to fetch.
+    - limit: The maximum number of records to fetch. Use None to fetch all rows.
 
     Returns:
     - A Polars DataFrame containing the fetched data.
     """
     client = set_client()
 
-    results = client.get(dataset_identifier, limit=limit)
-    df = pl.DataFrame(results)
-    return df
+    if limit is not None and limit <= 0:
+        return pl.DataFrame()
+
+    frames = []
+    offset = 0
+    fetched = 0
+
+    while True:
+        if limit is None:
+            current_limit = DEFAULT_PAGE_SIZE
+        else:
+            remaining = limit - fetched
+            if remaining <= 0:
+                break
+            current_limit = min(DEFAULT_PAGE_SIZE, remaining)
+
+        page_results = None
+        last_error = None
+
+        for attempt in range(1, DEFAULT_MAX_RETRIES + 1):
+            try:
+                page_results = client.get(
+                    dataset_identifier,
+                    limit=current_limit,
+                    offset=offset,
+                )
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt < DEFAULT_MAX_RETRIES:
+                    backoff_seconds = 2 ** (attempt - 1)
+                    print(
+                        f"Retry {attempt}/{DEFAULT_MAX_RETRIES} for {dataset_identifier} "
+                        f"after error: {exc}. Waiting {backoff_seconds}s..."
+                    )
+                    time.sleep(backoff_seconds)
+
+        if page_results is None:
+            raise last_error
+
+        if not page_results:
+            break
+
+        page_df = pl.DataFrame(page_results)
+        frames.append(page_df)
+
+        page_count = len(page_results)
+        fetched += page_count
+        offset += page_count
+
+        print(f"Fetched {fetched:,} rows from {dataset_identifier}...")
+
+        if page_count < current_limit:
+            break
+
+    if not frames:
+        return pl.DataFrame()
+
+    return pl.concat(frames, how="diagonal_relaxed")
 
 
 def load_data(
-    dataset_identifier: str, limit: int = 1000, save_local: bool = True
+    dataset_identifier: str, limit: int | None = None, save_local: bool = True
 ) -> pl.DataFrame:
     """
     Load data from a local parquet file if it exists, otherwise fetch from API.
@@ -66,6 +128,7 @@ def load_data(
     Parameters:
     - dataset_identifier: The identifier of the dataset to load.
     - limit: The maximum number of records to fetch if loading from API.
+             Use None to fetch all rows.
 
     Returns:
     - A Polars DataFrame containing the loaded data.
