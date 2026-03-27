@@ -9,7 +9,12 @@ SOURCE: https://data.cityofnewyork.us/City-Government/New-York-City-Population-b
 
 import polars as pl
 
-from data.utils.utils import load_data, prepare_dataset_for_db, upload_dataset
+from data.utils.utils import (
+    BOROUGH_MAP,
+    load_data,
+    prepare_dataset_for_db,
+    upload_dataset,
+)
 
 ID = "xywu-7bv9"
 LIMIT = 6
@@ -61,6 +66,41 @@ def population_per_year(data) -> dict:
     return filename
 
 
+def population_by_borough(data) -> dict:
+    # convert year to int
+
+    data_long = (
+        data.filter(pl.col("borough") != "NYC Total")
+        .with_columns(
+            pl.col("_2020").cast(pl.Int64).alias("population"),
+            pl.col("borough").str.strip_chars().alias("borough"),
+        )
+        .select(["borough", "population"])
+    )
+    print(data_long)
+
+    by_borough = data_long.with_columns(
+        pl.col("borough").replace(BOROUGH_MAP).cast(int).alias("borough")
+    ).sort("population", descending=True)
+    print(by_borough)
+
+    filename = prepare_dataset_for_db(
+        dataset=by_borough,
+        dataset_x="borough",
+        dataset_y="population",
+        title="New York City Population by Borough, 2020",
+        type="order",
+        city="New York City",
+        source=SOURCE,
+        subtitle="Population of each NYC borough in 2020",
+        note="",
+    )
+
+    return filename
+
+
 if __name__ == "__main__":
-    filename = population_per_year(data)
+    # filename = population_per_year(data)
+    # upload_dataset(filename)
+    filename = population_by_borough(data)
     upload_dataset(filename)
