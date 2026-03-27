@@ -23,7 +23,7 @@
 
 </script>
 
-<header>
+<-->
 	<div class="date">{currentDate}</div>
 	<a href="/" class="logo-link">
 		<div class="title-container">
@@ -53,7 +53,7 @@
 		</div>
 	</a>
 	<div class="spacer"></div>
-	<a href="/about" class="about-link">About</a>
+	<!-- <a href="/about" class="about-link">About</a>--> 
 </header>
 
 <style>
